@@ -26,7 +26,15 @@ trusty_app_manifest_t TRUSTY_APP_MANIFEST_ATTRS trusty_app_manifest = {
 
         /* optional configuration options here */
         {
-                TRUSTY_APP_CONFIG_MIN_HEAP_SIZE(24 * 4096),
-                TRUSTY_APP_CONFIG_MIN_STACK_SIZE(8 * 4096),
+                /*
+                 * The extra 10MB (2500 * 0x1000) are for the allocation of a
+                 * pseudo frame buffer. This goes away once a secure frame
+                 * buffer service is in place which then provides the actual
+                 * frame buffer which would not reside on the heap.
+                 * TODO: Make heap size depending on the frame buffer
+                 *       implementation b/148083383
+                 */
+                TRUSTY_APP_CONFIG_MIN_HEAP_SIZE(24 * 4096 + 2500 * 0x1000),
+                TRUSTY_APP_CONFIG_MIN_STACK_SIZE(16 * 4096),
         },
 };
