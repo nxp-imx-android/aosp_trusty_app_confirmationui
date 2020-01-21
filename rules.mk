@@ -18,12 +18,14 @@ MODULE := $(LOCAL_DIR)
 
 # Use the default layouts unless we have a vendor specific layout defined.
 CONFIRMATIONUI_LAYOUTS ?= $(LOCAL_DIR)/examples/layouts
+TRUSTY_SECURE_FB ?= trusty/user/base/lib/secure_fb/mock
 
 MODULE_SRCS += \
 	$(LOCAL_DIR)/src/main.cpp \
 	$(LOCAL_DIR)/src/manifest.c \
 	$(LOCAL_DIR)/src/secure_input_tracker.cpp \
 	$(LOCAL_DIR)/src/trusty_operation.cpp \
+	$(LOCAL_DIR)/src/trusty_confirmation_ui.cpp \
 	$(LOCAL_DIR)/src/trusty_time_stamper.cpp \
 
 MODULE_CPPFLAGS := -std=c++17 -fno-short-enums -fno-exceptions
@@ -36,6 +38,7 @@ MODULE_DEPS += \
 	trusty/user/base/lib/teeui-stub \
 	trusty/user/base/lib/tipc \
 	external/boringssl \
+	$(TRUSTY_SECURE_FB) \
 	$(CONFIRMATIONUI_LAYOUTS) \
 
 include make/module.mk

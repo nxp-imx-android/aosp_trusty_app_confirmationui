@@ -91,15 +91,25 @@ int TrustyOperation::handleMsg(void* msg,
 }
 
 ResponseCode TrustyOperation::initHook() {
-    input_tracker_.newSession();
-    return ResponseCode::OK;
+    auto rc = gui_.start(getPrompt().data(), languageIdBuffer_,
+                         invertedColorModeRequested_, maginifiedViewRequested_);
+    if (rc != ResponseCode::OK) {
+        TLOGE("GUI start returned: %d\n", rc);
+    } else {
+        input_tracker_.newSession();
+    }
+    TLOGI("initHook: %u\n", rc);
+    return rc;
 }
 
 void TrustyOperation::abortHook() {
     input_tracker_.abort();
+    gui_.stop();
 }
 
-void TrustyOperation::finalizeHook() {}
+void TrustyOperation::finalizeHook() {
+    gui_.stop();
+}
 
 ResponseCode TrustyOperation::testCommandHook(TestModeCommands testCmd) {
     switch (testCmd) {
@@ -129,6 +139,10 @@ WriteStream TrustyOperation::extendedProtocolHook(Protocol proto,
         auto [rc, nonce] = input_tracker_.beginHandshake();
         if (rc != ResponseCode::OK) {
             TLOGE("beginHandshake failed\n");
+            abort();
+        } else if ((rc = gui_.showInstructions(true /*enable*/)) !=
+                   ResponseCode::OK) {
+            TLOGE("showInstructions failed\n");
             abort();
         }
         return write(InputHandshakeResponse(), out, rc, nonce);

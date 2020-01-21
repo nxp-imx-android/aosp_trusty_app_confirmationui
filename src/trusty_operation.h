@@ -24,6 +24,7 @@
 #include <secure_input/secure_input_proto.h>
 
 #include "secure_input_tracker.h"
+#include "trusty_confirmation_ui.h"
 #include "trusty_time_stamper.h"
 
 class TrustyOperation
@@ -60,5 +61,6 @@ public:
     static TimeStamp now() { return monotonic_time_stamper::now(); }
 
 private:
+    TrustyConfirmationUI gui_;
     InputTracker input_tracker_;
 };
