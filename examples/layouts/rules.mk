@@ -11,32 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
 LOCAL_DIR := $(GET_LOCAL_DIR)
 
 MODULE := $(LOCAL_DIR)
 
-# Use the default layouts unless we have a vendor specific layout defined.
-CONFIRMATIONUI_LAYOUTS ?= $(LOCAL_DIR)/examples/layouts
+LIBTEEUI_ROOT := $(TRUSTY_TOP)/system/teeui/libteeui
 
 MODULE_SRCS += \
-	$(LOCAL_DIR)/src/main.cpp \
-	$(LOCAL_DIR)/src/manifest.c \
-	$(LOCAL_DIR)/src/secure_input_tracker.cpp \
-	$(LOCAL_DIR)/src/trusty_operation.cpp \
-	$(LOCAL_DIR)/src/trusty_time_stamper.cpp \
+	$(LOCAL_DIR)/device_parameters.cpp \
+	$(LOCAL_DIR)/fonts.S \
+
+MODULE_INCLUDES += \
+	$(LIBTEEUI_ROOT)/include \
+	$(LOCAL_DIR)/include \
 
 MODULE_CPPFLAGS := -std=c++17 -fno-short-enums -fno-exceptions
-MODULE_CPPFLAGS += -fno-threadsafe-statics -fno-rtti
+MODULE_CPPFLAGS += -fno-threadsafe-statics -fno-rtti -DNDEBUG
 
-MODULE_DEPS += \
-	trusty/user/base/lib/libc-trusty \
-	trusty/user/base/lib/libstdc++-trusty \
-	trusty/user/base/lib/rng \
-	trusty/user/base/lib/teeui-stub \
-	trusty/user/base/lib/tipc \
-	external/boringssl \
-	$(CONFIRMATIONUI_LAYOUTS) \
+MODULE_COMPILEFLAGS := -U__ANDROID__
+
+# The assembler need the search path set to this directory so that the incbin directive finds
+# the font files to include.
+MODULE_ASMFLAGS := -I $(LOCAL_DIR) -D__ASSEMBLY__
 
 include make/module.mk
-
