@@ -1,5 +1,4 @@
 /*
- *
  * Copyright 2019, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +18,12 @@
 
 #include <teeui/button.h>
 #include <teeui/label.h>
+#include <teeui/localization/ConfirmationUITranslations.h>
 #include <teeui/utils.h>
 
 #include "fonts.h"
+
+using teeui::localization::TranslationId;
 
 namespace teeui {
 
@@ -87,7 +89,7 @@ RightJustified;
 VerticallyCentered;
 TextColor(ColorText());
 Font(FONT(RobotoMedium));
-TextID(1424834532030812203);
+TextID(TEXT_ID(TranslationId::CONFIRM_PWR_BUTTON_DOUBLE_PRESS));
 END_ELEMENT();
 
 BEGIN_ELEMENT(IconPower, teeui::Button, ConvexObjectCount(2))
@@ -112,7 +114,7 @@ RightJustified;
 VerticallyCentered;
 TextColor(ColorText());
 Font(FONT(RobotoMedium));
-TextID(1796282799666106567);
+TextID(TEXT_ID(TranslationId::CANCEL));
 END_ELEMENT();
 
 BEGIN_ELEMENT(IconVolUp, teeui::Button, ConvexObjectCount(2))
@@ -146,7 +148,7 @@ DefaultText("Android Protected Confirmation");
 Font(FONT(RobotoMedium));
 VerticallyCentered;
 TextColor(ColorText());
-TextID(6973195374358399966);
+TextID(TEXT_ID(TranslationId::TITLE));
 END_ELEMENT();
 
 BEGIN_ELEMENT(LabelHint, teeui::Label)
@@ -158,10 +160,10 @@ Position(BorderWidth, BottomOfScreen() - BorderWidth - dim_h);
 DefaultText(
         "This confirmation provides an extra layer of security for the action you're "
         "about to take.");
-VerticallyCentered;
+VerticalTextAlignment(Alignment::BOTTOM);
 TextColor(ColorText());
 Font(DefaultFont);
-TextID(217688588483778177);
+TextID(TEXT_ID(TranslationId::DESCRIPTION));
 END_ELEMENT();
 
 BEGIN_ELEMENT(LabelBody, teeui::Label)

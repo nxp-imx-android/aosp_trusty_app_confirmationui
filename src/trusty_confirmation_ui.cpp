@@ -1,5 +1,4 @@
 /*
- *
  * Copyright 2019, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,15 +16,11 @@
 
 #include "trusty_confirmation_ui.h"
 
-extern "C" {
-
-#include <localization/ConfirmationUITranslations.h>
-}
-
 #include <layouts/device_parameters.h>
 #include <layouts/layout.h>
 
 #include <teeui/error.h>
+#include <teeui/localization/ConfirmationUITranslations.h>
 #include <teeui/utils.h>
 
 #include <interface/secure_fb/secure_fb.h>
@@ -56,7 +51,7 @@ static teeui::Error updateString(Layout* layout) {
     const char* str;
     auto& label = std::get<Label>(*layout);
 
-    str = ConfirmationUITranslations_lookup(label.textId());
+    str = localization::lookup(TranslationId(label.textId()));
     if (str == nullptr) {
         TLOGW("Given translation_id %" PRIu64 " not found", label.textId());
         return Error::Localization;
@@ -187,7 +182,7 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
 
     layout_ = instantiateLayout(ConfUILayout(), *ctx);
 
-    ConfirmationUITranslations_select_lang_id(lang_id);
+    localization::selectLangId(lang_id);
     if (auto error = updateTranslations()) {
         return teeuiError2ResponseCode(error);
     }
