@@ -16,21 +16,11 @@
 
 #pragma once
 
+#include <layouts/layout.h>
 #include <stdint.h>
-#include "layout.h"
 
-namespace teeui {
+namespace devices {
 
-/*
- * TODO: Instead of defining an enum value for each device, we need to find a
- * more generic way to select the layout parameters for the device we are
- * running on, if the client of this library is supposed to be generic.
- */
-enum class Devices : uint32_t {
-    BLUELINE,
-    CROSSHATCH,
-};
+teeui::context<teeui::ConUIParameters> getDeviceContext(bool magnified);
 
-optional<context<ConUIParameters>> getDeviceContext(Devices d, bool magnified);
-
-}  // namespace teeui
+}  // namespace devices

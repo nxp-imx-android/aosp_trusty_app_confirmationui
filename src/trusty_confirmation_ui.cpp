@@ -16,7 +16,7 @@
 
 #include "trusty_confirmation_ui.h"
 
-#include <layouts/device_parameters.h>
+#include <devices/device_parameters.h>
 #include <layouts/layout.h>
 
 #include <teeui/error.h>
@@ -162,31 +162,23 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
     }
 
     using namespace teeui;
-    optional<context<ConUIParameters>> ctx;
 
-    /*
-     * TODO: find a more generic way to determine the device we are running on.
-     * b/148079189
-     */
-    if (fb_info_.width == 1080 && fb_info_.height == 2160) {
-        ctx = getDeviceContext(Devices::BLUELINE, magnified);
-    } else if (fb_info_.width == 1440 && fb_info_.height == 2960) {
-        ctx = getDeviceContext(Devices::CROSSHATCH, magnified);
-    }
+    auto ctx = devices::getDeviceContext(magnified);
 
-    if (!ctx) {
-        TLOGE("no suitable layout found for screen resolution of %ux%u\n",
-              fb_info_.width, fb_info_.height);
+    if (*ctx.getParam<RightEdgeOfScreen>() != pxs(fb_info_.width) ||
+        *ctx.getParam<BottomOfScreen>() != pxs(fb_info_.height)) {
+        TLOGE("Framebuffer dimensions do not match panel configuration\n");
+        TLOGE("Check device configuration\n");
         return ResponseCode::UIError;
     }
 
-    layout_ = instantiateLayout(ConfUILayout(), *ctx);
+    layout_ = instantiateLayout(ConfUILayout(), ctx);
 
     localization::selectLangId(lang_id);
     if (auto error = updateTranslations()) {
         return teeuiError2ResponseCode(error);
     }
-    updateColorScheme(&*ctx, inverted_);
+    updateColorScheme(&ctx, inverted_);
 
     std::get<LabelBody>(layout_).setText({prompt, prompt + strlen(prompt)});
 

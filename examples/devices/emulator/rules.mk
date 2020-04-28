@@ -20,21 +20,13 @@ MODULE := $(LOCAL_DIR)
 LIBTEEUI_ROOT := $(TRUSTY_TOP)/system/teeui/libteeui
 
 MODULE_SRCS += \
-	$(LOCAL_DIR)/fonts.S \
+	$(LOCAL_DIR)/device_parameters.cpp \
 
 GLOBAL_INCLUDES += $(LOCAL_DIR)/include
 
 MODULE_INCLUDES += \
 	$(LIBTEEUI_ROOT)/include \
 	$(LOCAL_DIR)/include \
-
-MODULE_CPPFLAGS := -std=c++17 -fno-short-enums -fno-exceptions
-MODULE_CPPFLAGS += -fno-threadsafe-statics -fno-rtti -DNDEBUG
-
-MODULE_COMPILEFLAGS := -U__ANDROID__
-
-# The assembler need the search path set to this directory so that the incbin directive finds
-# the font files to include.
-MODULE_ASMFLAGS := -I $(LOCAL_DIR) -D__ASSEMBLY__
+	$(LOCAL_DIR)/../../layouts/include \
 
 include make/module.mk
