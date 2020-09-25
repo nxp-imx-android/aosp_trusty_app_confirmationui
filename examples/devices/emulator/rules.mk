@@ -22,7 +22,7 @@ LIBTEEUI_ROOT := $(TRUSTY_TOP)/system/teeui/libteeui
 MODULE_SRCS += \
 	$(LOCAL_DIR)/device_parameters.cpp \
 
-GLOBAL_INCLUDES += $(LOCAL_DIR)/include
+MODULE_EXPORT_INCLUDES += $(LOCAL_DIR)/include
 
 MODULE_INCLUDES += \
 	$(LIBTEEUI_ROOT)/include \
@@ -30,4 +30,8 @@ MODULE_INCLUDES += \
 	$(LOCAL_DIR)/../../layouts/include \
 	$(LOCAL_DIR)/../../../src \
 
-include make/module.mk
+MODULE_LIBRARY_DEPS += \
+	trusty/user/base/lib/teeui-stub \
+	trusty/user/base/lib/libstdc++-trusty \
+
+include make/library.mk

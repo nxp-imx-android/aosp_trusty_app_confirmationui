@@ -22,7 +22,7 @@ LIBTEEUI_ROOT := $(TRUSTY_TOP)/system/teeui/libteeui
 MODULE_SRCS += \
 	$(LOCAL_DIR)/fonts.S \
 
-GLOBAL_INCLUDES += $(LOCAL_DIR)/include
+MODULE_EXPORT_INCLUDES += $(LOCAL_DIR)/include
 
 MODULE_INCLUDES += \
 	$(LIBTEEUI_ROOT)/include \
@@ -34,4 +34,4 @@ MODULE_COMPILEFLAGS := -U__ANDROID__
 # the font files to include.
 MODULE_ASMFLAGS := -I $(LOCAL_DIR) -D__ASSEMBLY__
 
-include make/module.mk
+include make/library.mk

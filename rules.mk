@@ -29,7 +29,7 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/src/trusty_confirmation_ui.cpp \
 	$(LOCAL_DIR)/src/trusty_time_stamper.cpp \
 
-MODULE_DEPS += \
+MODULE_LIBRARY_DEPS += \
 	trusty/user/base/lib/keymaster \
 	trusty/user/base/lib/libc-trusty \
 	trusty/user/base/lib/libstdc++-trusty \
@@ -41,4 +41,4 @@ MODULE_DEPS += \
 	$(CONFIRMATIONUI_DEVICE_PARAMS) \
 	$(CONFIRMATIONUI_LAYOUTS) \
 
-include make/module.mk
+include make/trusted_app.mk
