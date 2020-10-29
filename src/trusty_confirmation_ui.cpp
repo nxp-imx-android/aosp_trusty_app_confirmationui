@@ -14,25 +14,20 @@
  * limitations under the License.
  */
 
+#define TLOG_TAG "confirmationui"
+
 #include "trusty_confirmation_ui.h"
+#include "trusty_operation.h"
 
 #include <devices/device_parameters.h>
+#include <interface/secure_fb/secure_fb.h>
+#include <inttypes.h>
 #include <layouts/layout.h>
-
+#include <stdio.h>
 #include <teeui/error.h>
 #include <teeui/localization/ConfirmationUITranslations.h>
 #include <teeui/utils.h>
-
-#include <interface/secure_fb/secure_fb.h>
-
-#include "trusty_operation.h"
-
-#include <inttypes.h>
-#include <stdio.h>
-
 #include <trusty_log.h>
-
-#define TLOG_TAG "confirmationui"
 
 using teeui::ResponseCode;
 
@@ -151,9 +146,8 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
                                          bool magnified) {
     enabled_ = true;
     inverted_ = inverted;
-    auto rc = trusty_secure_fb_get_secure_fb(&fb_info_);
-    if (rc != TTUI_ERROR_OK) {
-        TLOGE("trusty_secure_fb_get_secure_fb returned  %d\n", rc);
+    if (auto rc = secure_fb_open(&secure_fb_handle_, &fb_info_)) {
+        TLOGE("secure_fb_open returned  %d\n", rc);
         return ResponseCode::UIError;
     }
     if (fb_info_.pixel_format != TTUI_PF_RGBA8) {
@@ -231,9 +225,8 @@ ResponseCode TrustyConfirmationUI::renderAndSwap() {
         return teeuiError2ResponseCode(error);
     }
 
-    auto rc = trusty_secure_fb_display_next(&fb_info_, false);
-    if (rc != TTUI_ERROR_OK) {
-        TLOGE("trusty_secure_fb_display_next returned  %d\n", rc);
+    if (auto rc = secure_fb_display_next(secure_fb_handle_, &fb_info_)) {
+        TLOGE("secure_fb_display_next returned  %d\n", rc);
         return ResponseCode::UIError;
     }
 
@@ -271,6 +264,7 @@ ResponseCode TrustyConfirmationUI::showInstructions(bool enable) {
 
 void TrustyConfirmationUI::stop() {
     TLOGI("calling gui stop\n");
-    trusty_secure_fb_release_display();
+    secure_fb_close(secure_fb_handle_);
+    secure_fb_handle_ = NULL;
     TLOGI("calling gui stop - done\n");
 }

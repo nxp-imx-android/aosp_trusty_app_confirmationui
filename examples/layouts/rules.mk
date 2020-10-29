@@ -28,9 +28,6 @@ MODULE_INCLUDES += \
 	$(LIBTEEUI_ROOT)/include \
 	$(LOCAL_DIR)/include \
 
-MODULE_CPPFLAGS := -std=c++17 -fno-short-enums -fno-exceptions
-MODULE_CPPFLAGS += -fno-threadsafe-statics -fno-rtti -DNDEBUG
-
 MODULE_COMPILEFLAGS := -U__ANDROID__
 
 # The assembler need the search path set to this directory so that the incbin directive finds

@@ -24,7 +24,7 @@
 #include <teeui/error.h>
 #include <teeui/utils.h>
 
-#include <interface/secure_fb/secure_fb.h>
+#include <lib/secure_fb/secure_fb.h>
 
 #include <secure_input/secure_input_proto.h>
 
@@ -78,7 +78,8 @@ private:
     teeui::Error updateTranslations();
     teeui::ResponseCode renderAndSwap();
 
-    trusty_secure_fb_info fb_info_;
+    secure_fb_info fb_info_;
+    secure_fb_handle_t secure_fb_handle_;
 
     uint32_t rotation_;
     bool inverted_;
