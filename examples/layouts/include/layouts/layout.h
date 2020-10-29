@@ -131,7 +131,7 @@ FontSize(24_dp);
 LineHeight(24_dp);
 NumberOfLines(1);
 Dimension(LabelWidth, HeightFromLines);
-Position(BorderWidth, BOTTOM_EDGE_OF(LabelCancel) + 60_dp);
+Position(BorderWidth, BOTTOM_EDGE_OF(LabelCancel) + 40_dp);
 DefaultText(
         "A");  // ShieldTTF has just one glyph at the code point for capital A
 TextColor(ShieldColor());
