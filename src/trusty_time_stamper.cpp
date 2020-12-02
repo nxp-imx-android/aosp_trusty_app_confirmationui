@@ -20,7 +20,7 @@
 
 #include <inttypes.h>
 #include <stdio.h>
-#include <time.h>
+#include <trusty/time.h>
 
 #include <trusty_log.h>
 
