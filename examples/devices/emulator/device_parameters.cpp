@@ -21,8 +21,8 @@ namespace devices {
 using namespace teeui;
 
 context<ConUIParameters> getDeviceContext(bool magnified) {
-    context<ConUIParameters> ctx(6.45211, 480.0 / 412.0);
-    ctx.setParam<RightEdgeOfScreen>(480_px);
+    context<ConUIParameters> ctx(6.45211, 400.0 / 412.0);
+    ctx.setParam<RightEdgeOfScreen>(400_px);
     ctx.setParam<BottomOfScreen>(800_px);
     ctx.setParam<PowerButtonTop>(20.26_mm);
     ctx.setParam<PowerButtonBottom>(30.26_mm);
