@@ -28,6 +28,8 @@
 
 #include "trusty_operation.h"
 
+#include <lib/keymaster/keymaster.h>
+
 #define CONFIRMATIONUI_PORT_NAME "com.android.trusty.confirmationui"
 
 /*
@@ -66,8 +68,6 @@ struct PacketHeader {
 };
 
 static constexpr const size_t kMessageSize = 0x2000;  // 8K
-constexpr const auto kTestKey = teeui::AuthTokenKey::fill(
-        static_cast<uint8_t>(teeui::TestKeyBits::BYTE));
 
 enum class IpcState {
     SENDING,
@@ -86,6 +86,31 @@ const char* toString(IpcState s) {
     default:
         return "Unknown";
     }
+}
+
+static bool get_auth_token_key(teeui::AuthTokenKey& authKey) {
+    long rc = keymaster_open();
+
+    if (rc < 0) {
+        return false;
+    }
+
+    keymaster_session_t session = (keymaster_session_t)rc;
+    uint8_t* key = nullptr;
+    uint32_t local_length = 0;
+    rc = keymaster_get_auth_token_key(session, &key, &local_length);
+    keymaster_close(session);
+    TLOGD("%s, key length = %u\n", __func__, local_length);
+    if (local_length != teeui::kAuthTokenKeySize) {
+        return false;
+    }
+    if (rc == NO_ERROR) {
+        memcpy(authKey.data(), key, teeui::kAuthTokenKeySize);
+    } else {
+        return false;
+    }
+
+    return true;
 }
 
 static void port_handler(const struct uevent* event, void* priv) {
@@ -115,11 +140,24 @@ static void port_handler(const struct uevent* event, void* priv) {
         uint32_t msize = aligned_message_size;
         TrustyOperation op;
 
-        /*
-         * TODO: Get the real auth token key form Keymaster and install it
-         * instead of the test key.
-         */
+#if defined(PLATFORM_GENERIC_ARM64)
+        /* Use the test key for emulator */
+        constexpr const auto kTestKey = teeui::AuthTokenKey::fill(
+                static_cast<uint8_t>(teeui::TestKeyBits::BYTE));
         op.setHmacKey(kTestKey);
+#else
+        teeui::AuthTokenKey authKey;
+        if (get_auth_token_key(authKey) == true) {
+            TLOGD("%s, get auth token key successfully\n", __func__);
+        } else {
+            TLOGE("%s, get auth token key failed\n", __func__);
+            /* Abort operation and free all resources */
+            op.abort();
+            close(channel);
+            return;
+        }
+        op.setHmacKey(authKey);
+#endif
 
         IpcState state = IpcState::RECEIVING;
 

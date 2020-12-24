@@ -30,6 +30,7 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/src/trusty_time_stamper.cpp \
 
 MODULE_DEPS += \
+	trusty/user/base/lib/keymaster \
 	trusty/user/base/lib/libc-trusty \
 	trusty/user/base/lib/libstdc++-trusty \
 	trusty/user/base/lib/rng \
