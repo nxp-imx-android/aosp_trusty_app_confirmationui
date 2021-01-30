@@ -28,5 +28,6 @@ MODULE_INCLUDES += \
 	$(LIBTEEUI_ROOT)/include \
 	$(LOCAL_DIR)/include \
 	$(LOCAL_DIR)/../../layouts/include \
+	$(LOCAL_DIR)/../../../src \
 
 include make/module.mk

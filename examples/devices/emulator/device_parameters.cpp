@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <devices/device_parameters.h>
+#include <device_parameters.h>
 
 namespace devices {
 

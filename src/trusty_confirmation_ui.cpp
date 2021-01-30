@@ -19,7 +19,8 @@
 #include "trusty_confirmation_ui.h"
 #include "trusty_operation.h"
 
-#include <devices/device_parameters.h>
+#include "device_parameters.h"
+
 #include <interface/secure_fb/secure_fb.h>
 #include <inttypes.h>
 #include <layouts/layout.h>
