@@ -16,76 +16,28 @@
 
 #define TLOG_TAG "confirmationui"
 
+#include <lib/keymaster/keymaster.h>
 #include <lib/tipc/tipc.h>
+#include <lib/tipc/tipc_srv.h>
 #include <lk/err_ptr.h>
 #include <lk/macros.h>
-#include <stdlib.h>
-#include <trusty_ipc.h>
+#include <sys/mman.h>
 #include <trusty_log.h>
 #include <uapi/err.h>
 
-#include <algorithm>
+#include <memory>
 
+#include "ipc.h"
 #include "trusty_operation.h"
 
-#include <lib/keymaster/keymaster.h>
-
-#define CONFIRMATIONUI_PORT_NAME "com.android.trusty.confirmationui"
-
-/*
- * Must be kept in sync with HAL service (see TrustyApp.cpp)
- */
-static constexpr size_t kPacketSize = 0x1000 - 32;
-
-/*
- * Must be kept in sync with HAL service (see TrustyApp.cpp)
- */
-enum class PacketType : uint32_t {
-    SND,
-    RCV,
-    ACK,
+struct chan_ctx {
+    void* shm_base;
+    size_t shm_len;
+    std::unique_ptr<TrustyOperation> op;
 };
 
-static const char* toString(PacketType t) {
-    switch (t) {
-    case PacketType::SND:
-        return "SND";
-    case PacketType::RCV:
-        return "RCV";
-    case PacketType::ACK:
-        return "ACK";
-    default:
-        return "UNKNOWN";
-    }
-}
-
-/*
- * Must be kept in sync with HAL service (see TrustyApp.cpp)
- */
-struct PacketHeader {
-    PacketType type;
-    uint32_t remaining;
-};
-
-static constexpr const size_t kMessageSize = 0x2000;  // 8K
-
-enum class IpcState {
-    SENDING,
-    RECEIVING,
-    DESYNC,
-};
-
-const char* toString(IpcState s) {
-    switch (s) {
-    case IpcState::SENDING:
-        return "SENDING";
-    case IpcState::RECEIVING:
-        return "RECEIVING";
-    case IpcState::DESYNC:
-        return "DESYNC";
-    default:
-        return "Unknown";
-    }
+static inline bool is_inited(struct chan_ctx* ctx) {
+    return ctx->shm_base;
 }
 
 static bool get_auth_token_key(teeui::AuthTokenKey& authKey) {
@@ -113,188 +65,256 @@ static bool get_auth_token_key(teeui::AuthTokenKey& authKey) {
     return true;
 }
 
-static void port_handler(const struct uevent* event, void* priv) {
+struct __attribute__((__packed__)) confirmationui_req {
+    struct confirmationui_hdr hdr;
+    union {
+        struct confirmationui_init_req init_args;
+        struct confirmationui_msg_args msg_args;
+    };
+};
+
+static int confirmationui_recv(handle_t chan,
+                               confirmationui_req* req,
+                               handle_t* h) {
     int rc;
-    struct uuid peer_uuid;
-    handle_t channel;
+    ipc_msg_info msg_info;
+    uint32_t max_num_handles = h ? 1 : 0;
+    struct iovec iov = {
+            .iov_base = req,
+            .iov_len = sizeof(*req),
+    };
+    struct ipc_msg ipc_msg = {
+            .num_iov = 1,
+            .iov = &iov,
+            .num_handles = max_num_handles,
+            .handles = h,
+    };
 
-    TLOGD("Entering port handler %u\n", event->event);
+    rc = get_msg(chan, &msg_info);
+    if (rc != NO_ERROR) {
+        TLOGE("Failed to get message (%d)\n", rc);
+        return rc;
+    }
 
-    tipc_handle_port_errors(event);
+    if (msg_info.len > sizeof(*req)) {
+        TLOGE("Message is too long (%zd)\n", msg_info.len);
+        rc = ERR_BAD_LEN;
+        goto out;
+    }
 
-    if (event->event & IPC_HANDLE_POLL_READY) {
-        rc = accept(event->handle, &peer_uuid);
-        if (rc < 0) {
-            TLOGE("%s: failed (%d) to accept on port\n", __func__, rc);
-            return;
+    if (msg_info.num_handles > max_num_handles) {
+        TLOGE("Message has too many handles (%u)\n", msg_info.num_handles);
+        rc = ERR_TOO_BIG;
+        goto out;
+    }
+
+    rc = read_msg(chan, msg_info.id, 0, &ipc_msg);
+
+out:
+    put_msg(chan, msg_info.id);
+    return rc;
+}
+
+static int handle_init(handle_t chan,
+                       handle_t shm_handle,
+                       uint32_t shm_len,
+                       struct chan_ctx* ctx) {
+    int rc;
+    struct confirmationui_hdr hdr;
+
+    if (is_inited(ctx)) {
+        TLOGE("TA is already initialized.\n");
+        return ERR_BAD_STATE;
+    }
+
+    if (shm_len > CONFIRMATIONUI_MAX_MSG_SIZE) {
+        TLOGE("Shared memory too long\n");
+        return ERR_BAD_LEN;
+    }
+
+    void* shm_base = mmap(0, shm_len, PROT_READ | PROT_WRITE, 0, shm_handle, 0);
+    if (shm_base == MAP_FAILED) {
+        TLOGE("Failed to mmap() handle\n");
+        return ERR_BAD_HANDLE;
+    }
+
+    hdr.cmd = CONFIRMATIONUI_CMD_INIT | CONFIRMATIONUI_RESP_BIT;
+    rc = tipc_send1(chan, &hdr, sizeof(hdr));
+    if (rc != (int)sizeof(hdr)) {
+        TLOGE("Failed to send response (%d)\n", rc);
+        if (rc >= 0) {
+            rc = ERR_BAD_LEN;
         }
-        TLOGD("Accepted connection\n");
-        channel = (handle_t)rc;
+        goto err;
+    }
 
-        uint8_t message_buffer[kMessageSize];
-        uint8_t* const aligned_message =
-                (uint8_t*)round_up((uintptr_t)&message_buffer[0], 8);
-        const size_t aligned_message_size =
-                kMessageSize - (aligned_message - &message_buffer[0]);
-        uint32_t mpos = 0;
-        uint32_t msize = aligned_message_size;
-        TrustyOperation op;
+    ctx->shm_base = shm_base;
+    ctx->shm_len = shm_len;
+    return NO_ERROR;
+
+err:
+    munmap(shm_base, shm_len);
+    return rc;
+}
+
+static int handle_msg(handle_t chan, uint32_t req_len, struct chan_ctx* ctx) {
+    int rc;
+    uint8_t msg[CONFIRMATIONUI_MAX_MSG_SIZE];
+    uint32_t resp_len = sizeof(msg);
+    struct confirmationui_hdr hdr;
+    struct confirmationui_msg_args args;
+
+    if (!is_inited(ctx)) {
+        TLOGE("TA is not initialized.\n");
+        return ERR_BAD_STATE;
+    }
+
+    if (req_len > ctx->shm_len) {
+        TLOGE("Message too long (%u)\n", req_len);
+        return ERR_BAD_LEN;
+    }
+
+    assert(req_len <= sizeof(msg));
+    memcpy(msg, ctx->shm_base, req_len);
+
+    ctx->op->handleMsg(msg, req_len, ctx->shm_base, &resp_len);
+
+    hdr.cmd = CONFIRMATIONUI_CMD_MSG | CONFIRMATIONUI_RESP_BIT;
+    args.msg_len = resp_len;
+    rc = tipc_send2(chan, &hdr, sizeof(hdr), &args, sizeof(args));
+    if (rc != (int)(sizeof(hdr) + sizeof(args))) {
+        TLOGE("Failed to send response (%d)\n", rc);
+        if (rc >= 0) {
+            rc = ERR_BAD_LEN;
+        }
+        return rc;
+    }
+
+    return NO_ERROR;
+}
+
+static int on_connect(const struct tipc_port* port,
+                      handle_t chan,
+                      const struct uuid* peer,
+                      void** ctx_p) {
+    auto op = std::make_unique<TrustyOperation>();
+    if (!op) {
+        TLOGE("Failed to allocate TrustyOperation\n");
+        return ERR_NO_MEMORY;
+    }
+
+    struct chan_ctx* ctx = (struct chan_ctx*)calloc(1, sizeof(*ctx));
+    if (!ctx) {
+        TLOGE("Failed to allocate channel context\n");
+        return ERR_NO_MEMORY;
+    }
 
 #if defined(PLATFORM_GENERIC_ARM64)
-        /* Use the test key for emulator */
-        constexpr const auto kTestKey = teeui::AuthTokenKey::fill(
-                static_cast<uint8_t>(teeui::TestKeyBits::BYTE));
-        op.setHmacKey(kTestKey);
+    /* Use the test key for emulator. */
+    constexpr const auto kTestKey = teeui::AuthTokenKey::fill(
+            static_cast<uint8_t>(teeui::TestKeyBits::BYTE));
+    op->setHmacKey(kTestKey);
 #else
-        teeui::AuthTokenKey authKey;
-        if (get_auth_token_key(authKey) == true) {
-            TLOGD("%s, get auth token key successfully\n", __func__);
-        } else {
-            TLOGE("%s, get auth token key failed\n", __func__);
-            /* Abort operation and free all resources */
-            op.abort();
-            close(channel);
-            return;
-        }
-        op.setHmacKey(authKey);
+    teeui::AuthTokenKey authKey;
+    if (get_auth_token_key(authKey) == true) {
+        TLOGD("%s, get auth token key successfully\n", __func__);
+    } else {
+        TLOGE("%s, get auth token key failed\n", __func__);
+        /* Abort operation and free all resources. */
+        op->abort();
+        return ERR_GENERIC;
+    }
+    op->setHmacKey(authKey);
 #endif
 
-        IpcState state = IpcState::RECEIVING;
-
-        while (true) {
-            uevent_t event = UEVENT_INITIAL_VALUE(evt);
-            TLOGD("Waiting (state: %s)\n", toString(state));
-            rc = wait(channel, &event, INFINITE_TIME);
-            if (rc < 0) {
-                TLOGI("Wait returned error %d", rc);
-                break;
-            }
-            TLOGD("Returned from wait with %u\n", event.event);
-
-            tipc_handle_chan_errors(&event);
-            if (event.event & IPC_HANDLE_POLL_HUP) {
-                TLOGI("Got HUP\n");
-                break;
-            }
-            if (!(event.event & IPC_HANDLE_POLL_MSG))
-                continue;
-
-            // Handle message
-
-            PacketHeader header{};
-            constexpr const size_t header_size = sizeof(PacketHeader);
-            constexpr const uint32_t max_payload_size =
-                    kPacketSize - header_size;
-            int rc = tipc_recv_hdr_payload(channel, &header, header_size,
-                                           &aligned_message[mpos],
-                                           aligned_message_size - mpos);
-            TLOGD("Got header msg type: %u remaining %u rc %d\n", header.type,
-                  header.remaining, rc);
-            if (rc < 0) {
-                TLOGE("Error reading command %d\n", rc);
-                break;
-            }
-
-            switch (header.type) {
-            case PacketType::SND: {
-                if (state != IpcState::RECEIVING) {
-                    state = IpcState::DESYNC;
-                    break;
-                }
-                // We are receiving SND packets
-                size_t body_size = rc - header_size;
-                mpos += body_size;
-                header.type = PacketType::ACK;
-                header.remaining -= body_size;
-                rc = tipc_send1(channel, &header, header_size);
-                if (rc != header_size) {
-                    TLOGE("Failed to send ACK %d\n", rc);
-                    state = IpcState::DESYNC;
-                    break;
-                }
-                if (header.remaining == 0) {
-                    // we got a full message
-
-                    // handleMsg reads the message from the first buffer, then
-                    // writes the reponse to the second buffer. The last
-                    // argument is the second buffer size (in) and the written
-                    // response size (out);
-                    msize = aligned_message_size;
-
-                    TLOGD("Calling event handler\n");
-                    op.handleMsg(&aligned_message[0], mpos, &aligned_message[0],
-                                 &msize);
-                    TLOGD("Returned from event handler \n");
-
-                    // the response starts at message[0]
-                    mpos = 0;
-                    state = IpcState::SENDING;
-                }
-                break;
-            }
-            case PacketType::RCV: {
-                if (state != IpcState::SENDING) {
-                    state = IpcState::DESYNC;
-                    break;
-                }
-                // We are sending RCV packets
-                header.remaining = msize - mpos;
-                header.type = PacketType::ACK;
-                size_t body_size = std::min(max_payload_size, header.remaining);
-                rc = tipc_send2(channel, &header, header_size,
-                                &aligned_message[mpos], body_size);
-                mpos += body_size;
-                if (mpos == msize) {
-                    TLOGD("complete response sent\n");
-                    // we sent the full response -> switch to expecting the next
-                    // message.
-                    state = IpcState::RECEIVING;
-                    mpos = 0;
-                    msize = 0;
-                }
-                break;
-            }
-            case PacketType::ACK:
-            default:
-                state = IpcState::DESYNC;
-            }
-            if (state == IpcState::DESYNC) {
-                TLOGE("Protocol out of sync\n");
-                break;
-            }
-        }
-
-        TLOGD("Leaving session loop\n");
-        // Abort operation and free all resources
-        op.abort();
-        close(channel);
-    }
+    ctx->op = std::move(op);
+    *ctx_p = ctx;
+    return NO_ERROR;
 }
+
+static void on_channel_cleanup(void* _ctx) {
+    struct chan_ctx* ctx = (struct chan_ctx*)_ctx;
+    /* Abort operation and free all resources. */
+    munmap(ctx->shm_base, ctx->shm_len);
+    ctx->op->abort();
+    ctx->op.reset();
+    free(ctx);
+}
+
+static int on_message(const struct tipc_port* port, handle_t chan, void* _ctx) {
+    int rc;
+    struct confirmationui_req req;
+    handle_t shm_handle = INVALID_IPC_HANDLE;
+    struct chan_ctx* ctx = (struct chan_ctx*)_ctx;
+
+    assert(ctx);
+
+    rc = confirmationui_recv(chan, &req, &shm_handle);
+    if (rc < 0) {
+        TLOGE("Failed to receive confirmationui request (%d)\n", rc);
+        return rc;
+    }
+
+    if (rc != (int)sizeof(req)) {
+        TLOGE("Receive request of unexpected size(%d)\n", rc);
+        rc = ERR_BAD_LEN;
+        goto out;
+    }
+
+    switch (req.hdr.cmd) {
+    case CONFIRMATIONUI_CMD_INIT:
+        rc = handle_init(chan, shm_handle, req.init_args.shm_len, ctx);
+        goto out;
+
+    case CONFIRMATIONUI_CMD_MSG:
+        rc = handle_msg(chan, req.msg_args.msg_len, ctx);
+        goto out;
+
+    default:
+        TLOGE("cmd 0x%x: unknown command\n", req.hdr.cmd);
+        rc = ERR_CMD_UNKNOWN;
+        goto out;
+    }
+
+out:
+    close(shm_handle);
+    return rc;
+}
+
+static struct tipc_port_acl confirmationui_port_acl = {
+        .flags = IPC_PORT_ALLOW_NS_CONNECT,
+};
+
+static struct tipc_port confirmationui_port = {
+        .name = CONFIRMATIONUI_PORT,
+        .msg_max_size = sizeof(confirmationui_req),
+        .msg_queue_len = 1,
+        .acl = &confirmationui_port_acl,
+};
+
+static struct tipc_srv_ops confirmationui_ops = {
+        .on_connect = on_connect,
+        .on_message = on_message,
+        .on_channel_cleanup = on_channel_cleanup,
+};
 
 int main(void) {
     int rc;
-    handle_t port;
+    struct tipc_hset* hset;
 
     TLOGI("Initializing ConfirmationUI app\n");
 
-    rc = port_create(CONFIRMATIONUI_PORT_NAME, 1, 4096,
-                     IPC_PORT_ALLOW_NS_CONNECT);
-    if (rc < 0) {
-        TLOGE("%s: failed (%d) create port\n", __func__, rc);
+    hset = tipc_hset_create();
+    if (IS_ERR(hset)) {
+        TLOGE("Failed to create handle set (%d)\n", PTR_ERR(hset));
+        return PTR_ERR(hset);
+    }
+
+    rc = tipc_add_service(hset, &confirmationui_port, 1, 1,
+                          &confirmationui_ops);
+    if (rc != NO_ERROR) {
         return rc;
     }
-    port = (handle_t)rc;
 
-    uevent_t event = UEVENT_INITIAL_VALUE(evt);
-
-    do {
-        rc = wait(port, &event, INFINITE_TIME);
-        TLOGD("Got a connection\n");
-        port_handler(&event, nullptr);
-    } while (rc == 0);
-
-    TLOGE("wait on port returned unexpected %d\n", rc);
-    close(port);
-
-    return rc;
+    return tipc_run_event_loop(hset);
 }
