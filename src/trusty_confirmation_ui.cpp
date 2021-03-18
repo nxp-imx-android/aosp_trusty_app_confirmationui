@@ -153,6 +153,7 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
     }
     if (fb_info_.pixel_format != TTUI_PF_RGBA8) {
         TLOGE("Unknown pixel format %u\n", fb_info_.pixel_format);
+        stop();
         return ResponseCode::UIError;
     }
 
@@ -164,6 +165,7 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
         *ctx.getParam<BottomOfScreen>() != pxs(fb_info_.height)) {
         TLOGE("Framebuffer dimensions do not match panel configuration\n");
         TLOGE("Check device configuration\n");
+        stop();
         return ResponseCode::UIError;
     }
 
@@ -171,6 +173,7 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
 
     localization::selectLangId(lang_id);
     if (auto error = updateTranslations()) {
+        stop();
         return teeuiError2ResponseCode(error);
     }
     updateColorScheme(&ctx, inverted_);
