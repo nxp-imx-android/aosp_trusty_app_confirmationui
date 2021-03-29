@@ -37,9 +37,13 @@ static constexpr const teeui::Color kColorDisabled = 0xffbdbdbd;
 static constexpr const teeui::Color kColorEnabledInv = 0xffdedede;
 static constexpr const teeui::Color kColorDisabledInv = 0xff424242;
 static constexpr const teeui::Color kColorBackground = 0xffffffff;
-static constexpr const teeui::Color kColorBackgroundInv = 0xff212121;
-static constexpr const teeui::Color kColorShieldInv = 0xffc4cb80;
+static constexpr const teeui::Color kColorBackgroundInv = 0xff000000;
+static constexpr const teeui::Color kColorShieldInv = 0xfffac2a1;
 static constexpr const teeui::Color kColorShield = 0xff778500;
+static constexpr const teeui::Color kColorHintInv = 0xffffffff;
+static constexpr const teeui::Color kColorHint = 0xff757575;
+static constexpr const teeui::Color kColorButton = 0xffffffff;
+static constexpr const teeui::Color kColorButtonBackground = 0xff000000;
 
 template <typename Label, typename Layout>
 static teeui::Error updateString(Layout* layout) {
@@ -61,12 +65,18 @@ static void updateColorScheme(Context* ctx, bool inverted) {
     using namespace teeui;
     if (inverted) {
         ctx->template setParam<ShieldColor>(kColorShieldInv);
-        ctx->template setParam<ColorText>(kColorDisabledInv);
+        ctx->template setParam<ColorText>(kColorEnabledInv);
         ctx->template setParam<ColorBG>(kColorBackgroundInv);
+        ctx->template setParam<ColorButton>(kColorButton);
+        ctx->template setParam<ColorButtonBG>(kColorButtonBackground);
+        ctx->template setParam<ColorTextHint>(kColorHintInv);
     } else {
         ctx->template setParam<ShieldColor>(kColorShield);
-        ctx->template setParam<ColorText>(kColorDisabled);
+        ctx->template setParam<ColorText>(kColorEnabled);
         ctx->template setParam<ColorBG>(kColorBackground);
+        ctx->template setParam<ColorButton>(kColorButtonBackground);
+        ctx->template setParam<ColorButtonBG>(kColorButton);
+        ctx->template setParam<ColorTextHint>(kColorHint);
     }
     return;
 }
@@ -169,6 +179,7 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
         return ResponseCode::UIError;
     }
 
+    updateColorScheme(&ctx, inverted_);
     layout_ = instantiateLayout(ConfUILayout(), ctx);
 
     localization::selectLangId(lang_id);
@@ -176,7 +187,6 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
         stop();
         return teeuiError2ResponseCode(error);
     }
-    updateColorScheme(&ctx, inverted_);
 
     std::get<LabelBody>(layout_).setText({prompt, prompt + strlen(prompt)});
 

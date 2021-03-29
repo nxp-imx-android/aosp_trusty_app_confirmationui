@@ -38,6 +38,9 @@ DECLARE_PARAMETER(BodyFontSize);     // 16_dp regular and 20_dp magnified
 DECLARE_TYPED_PARAMETER(ShieldColor, ::teeui::Color);
 DECLARE_TYPED_PARAMETER(ColorText, ::teeui::Color);
 DECLARE_TYPED_PARAMETER(ColorBG, ::teeui::Color);
+DECLARE_TYPED_PARAMETER(ColorTextHint, ::teeui::Color);
+DECLARE_TYPED_PARAMETER(ColorButton, ::teeui::Color);
+DECLARE_TYPED_PARAMETER(ColorButtonBG, ::teeui::Color);
 
 NEW_PARAMETER_SET(ConUIParameters,
                   RightEdgeOfScreen,
@@ -50,7 +53,10 @@ NEW_PARAMETER_SET(ConUIParameters,
                   BodyFontSize,
                   ShieldColor,
                   ColorText,
-                  ColorBG);
+                  ColorBG,
+                  ColorTextHint,
+                  ColorButton,
+                  ColorButtonBG);
 
 CONSTANT(BorderWidth, 24_dp);
 CONSTANT(PowerButtonCenter, (PowerButtonTop() + PowerButtonBottom()) / 2_px);
@@ -96,10 +102,10 @@ BEGIN_ELEMENT(IconPower, teeui::Button, ConvexObjectCount(2))
 Dimension(BorderWidth, PowerButtonBottom() - PowerButtonTop());
 Position(RightEdgeOfScreen() - BorderWidth, PowerButtonTop());
 CornerRadius(3_dp);
-ButtonColor(ColorText());
+ButtonColor(ColorButton());
 RoundTopLeft;
 RoundBottomLeft;
-ConvexObjectColor(ColorBG());
+ConvexObjectColor(ColorButtonBG());
 ConvexObjects(ARROW_SHAPE);
 END_ELEMENT();
 
@@ -121,8 +127,8 @@ BEGIN_ELEMENT(IconVolUp, teeui::Button, ConvexObjectCount(2))
 Dimension(BorderWidth, VolUpButtonBottom() - VolUpButtonTop());
 Position(RightEdgeOfScreen() - BorderWidth, VolUpButtonTop());
 CornerRadius(5_dp);
-ButtonColor(ColorBG());
-ConvexObjectColor(ColorText());
+ButtonColor(ColorButtonBG());
+ConvexObjectColor(ColorButton());
 ConvexObjects(ARROW_SHAPE);
 END_ELEMENT();
 
@@ -161,7 +167,7 @@ DefaultText(
         "This confirmation provides an extra layer of security for the action you're "
         "about to take.");
 VerticalTextAlignment(Alignment::BOTTOM);
-TextColor(ColorText());
+TextColor(ColorTextHint());
 Font(DefaultFont);
 TextID(TEXT_ID(TranslationId::DESCRIPTION));
 END_ELEMENT();
