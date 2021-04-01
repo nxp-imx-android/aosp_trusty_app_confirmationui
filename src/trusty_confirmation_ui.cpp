@@ -32,18 +32,18 @@
 
 using teeui::ResponseCode;
 
-static constexpr const teeui::Color kColorEnabled = 0xff212121;
+static constexpr const teeui::Color kColorEnabled = 0xff242120;
 static constexpr const teeui::Color kColorDisabled = 0xffbdbdbd;
 static constexpr const teeui::Color kColorEnabledInv = 0xffdedede;
 static constexpr const teeui::Color kColorDisabledInv = 0xff424242;
 static constexpr const teeui::Color kColorBackground = 0xffffffff;
 static constexpr const teeui::Color kColorBackgroundInv = 0xff000000;
-static constexpr const teeui::Color kColorShieldInv = 0xfffac2a1;
-static constexpr const teeui::Color kColorShield = 0xff778500;
-static constexpr const teeui::Color kColorHintInv = 0xffffffff;
-static constexpr const teeui::Color kColorHint = 0xff757575;
-static constexpr const teeui::Color kColorButton = 0xffffffff;
-static constexpr const teeui::Color kColorButtonBackground = 0xff000000;
+static constexpr const teeui::Color kColorShieldInv = 0xfff69d66;
+static constexpr const teeui::Color kColorShield = 0xffe8731a;
+static constexpr const teeui::Color kColorHintInv = 0xffa6a09a;
+static constexpr const teeui::Color kColorHint = 0xff68635f;
+static constexpr const teeui::Color kColorButton = 0xffe8731a;
+static constexpr const teeui::Color kColorButtonInv = 0xfff69d66;
 
 template <typename Label, typename Layout>
 static teeui::Error updateString(Layout* layout) {
@@ -65,17 +65,17 @@ static void updateColorScheme(Context* ctx, bool inverted) {
     using namespace teeui;
     if (inverted) {
         ctx->template setParam<ShieldColor>(kColorShieldInv);
-        ctx->template setParam<ColorText>(kColorEnabledInv);
+        ctx->template setParam<ColorText>(kColorBackground);
         ctx->template setParam<ColorBG>(kColorBackgroundInv);
-        ctx->template setParam<ColorButton>(kColorButton);
-        ctx->template setParam<ColorButtonBG>(kColorButtonBackground);
+        ctx->template setParam<ColorButton>(kColorButtonInv);
+        ctx->template setParam<ColorButtonBG>(kColorEnabled);
         ctx->template setParam<ColorTextHint>(kColorHintInv);
     } else {
         ctx->template setParam<ShieldColor>(kColorShield);
         ctx->template setParam<ColorText>(kColorEnabled);
         ctx->template setParam<ColorBG>(kColorBackground);
-        ctx->template setParam<ColorButton>(kColorButtonBackground);
-        ctx->template setParam<ColorButtonBG>(kColorButton);
+        ctx->template setParam<ColorButton>(kColorButton);
+        ctx->template setParam<ColorButtonBG>(kColorBackground);
         ctx->template setParam<ColorTextHint>(kColorHint);
     }
     return;
