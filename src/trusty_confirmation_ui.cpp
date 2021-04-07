@@ -273,7 +273,7 @@ ResponseCode TrustyConfirmationUI::showInstructions(bool enable) {
             stop();
         }
     }
-    return ResponseCode::OK;
+    return rc;
 }
 
 void TrustyConfirmationUI::stop() {
