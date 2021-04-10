@@ -302,7 +302,7 @@ int main(void) {
     int rc;
     struct tipc_hset* hset;
 
-    TLOGI("Initializing ConfirmationUI app\n");
+    TLOGD("Initializing ConfirmationUI app\n");
 
     hset = tipc_hset_create();
     if (IS_ERR(hset)) {
