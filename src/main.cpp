@@ -209,7 +209,7 @@ static int on_connect(const struct tipc_port* port,
         return ERR_NO_MEMORY;
     }
 
-#if defined(PLATFORM_GENERIC_ARM64)
+#if 1
     /* Use the test key for emulator. */
     constexpr const auto kTestKey = teeui::AuthTokenKey::fill(
             static_cast<uint8_t>(teeui::TestKeyBits::BYTE));
