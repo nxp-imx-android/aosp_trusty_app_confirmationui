@@ -138,15 +138,15 @@ static ResponseCode teeuiError2ResponseCode(const teeui::Error& e) {
     }
 }
 
-teeui::Error TrustyConfirmationUI::updateTranslations() {
+teeui::Error TrustyConfirmationUI::updateTranslations(uint32_t idx) {
     using namespace teeui;
-    if (auto error = updateString<LabelOK>(&layout_))
+    if (auto error = updateString<LabelOK>(&layout_[idx]))
         return error;
-    if (auto error = updateString<LabelCancel>(&layout_))
+    if (auto error = updateString<LabelCancel>(&layout_[idx]))
         return error;
-    if (auto error = updateString<LabelTitle>(&layout_))
+    if (auto error = updateString<LabelTitle>(&layout_[idx]))
         return error;
-    if (auto error = updateString<LabelHint>(&layout_))
+    if (auto error = updateString<LabelHint>(&layout_[idx]))
         return error;
     return Error::OK;
 }
@@ -155,62 +155,84 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
                                          const char* lang_id,
                                          bool inverted,
                                          bool magnified) {
+    ResponseCode render_error = ResponseCode::OK;
     enabled_ = true;
     inverted_ = inverted;
-    if (auto rc = secure_fb_open(&secure_fb_handle_, &fb_info_, 0)) {
-        TLOGE("secure_fb_open returned  %d\n", rc);
-        return ResponseCode::UIError;
-    }
-    if (fb_info_.pixel_format != TTUI_PF_RGBA8) {
-        TLOGE("Unknown pixel format %u\n", fb_info_.pixel_format);
-        stop();
-        return ResponseCode::UIError;
-    }
 
     using namespace teeui;
 
     auto ctx = devices::getDeviceContext(magnified);
+    auto deviceCount = ctx.size();
 
-    if (*ctx.getParam<RightEdgeOfScreen>() != pxs(fb_info_.width) ||
-        *ctx.getParam<BottomOfScreen>() != pxs(fb_info_.height)) {
-        TLOGE("Framebuffer dimensions do not match panel configuration\n");
-        TLOGE("Check device configuration\n");
-        stop();
+    if (deviceCount < 1) {
+        TLOGE("Invalud deviceCount:  %d\n", (int)deviceCount);
         return ResponseCode::UIError;
     }
 
-    updateColorScheme(&ctx, inverted_);
-    layout_ = instantiateLayout(ConfUILayout(), ctx);
+    fb_info_.resize(deviceCount);
+    secure_fb_handle_.resize(deviceCount);
+    layout_.resize(deviceCount);
 
-    localization::selectLangId(lang_id);
-    if (auto error = updateTranslations()) {
-        stop();
-        return teeuiError2ResponseCode(error);
+    for (auto i = 0; i < (int)deviceCount; ++i) {
+        if (auto rc = secure_fb_open(&secure_fb_handle_[i], &fb_info_[i], i)) {
+            TLOGE("secure_fb_open returned  %d\n", rc);
+            stop();
+            return ResponseCode::UIError;
+        }
+        if (fb_info_[i].pixel_format != TTUI_PF_RGBA8) {
+            TLOGE("Unknown pixel format %u\n", fb_info_[i].pixel_format);
+            stop();
+            return ResponseCode::UIError;
+        }
+
+        if (*(ctx[i]).getParam<RightEdgeOfScreen>() != pxs(fb_info_[i].width) ||
+            *(ctx[i]).getParam<BottomOfScreen>() != pxs(fb_info_[i].height)) {
+            TLOGE("Framebuffer dimensions do not match panel configuration\n");
+            TLOGE("Check device configuration\n");
+            stop();
+            return ResponseCode::UIError;
+        }
     }
 
-    std::get<LabelBody>(layout_).setText({prompt, prompt + strlen(prompt)});
+    for (auto i = 0; i < (int)deviceCount; ++i) {
+        updateColorScheme(&(ctx[i]), inverted_);
+        layout_[i] = instantiateLayout(ConfUILayout(), ctx[i]);
 
-    showInstructions(false /* enable */);
-    auto render_error = renderAndSwap();
-    if (render_error != ResponseCode::OK) {
-        stop();
+        localization::selectLangId(lang_id);
+        if (auto error = updateTranslations(i)) {
+            stop();
+            return teeuiError2ResponseCode(error);
+        }
+
+        std::get<LabelBody>(layout_[i])
+                .setText({prompt, prompt + strlen(prompt)});
+
+        showInstructions(false /* enable */);
+        render_error = renderAndSwap(i);
+        if (render_error != ResponseCode::OK) {
+            stop();
+            return render_error;
+        }
     }
-    return render_error;
+    return ResponseCode::OK;
 }
 
-ResponseCode TrustyConfirmationUI::renderAndSwap() {
+ResponseCode TrustyConfirmationUI::renderAndSwap(uint32_t idx) {
+    /* All display will be rendering the same content */
     auto drawPixel = teeui::makePixelDrawer([&, this](uint32_t x, uint32_t y,
                                                       teeui::Color color)
                                                     -> teeui::Error {
         TLOGD("px %u %u: %08x", x, y, color);
-        size_t pos = y * fb_info_.line_stride + x * fb_info_.pixel_stride;
-        TLOGD("pos: %zu, bufferSize: %" PRIu32 "\n", pos, fb_info_.size);
-        if (pos >= fb_info_.size) {
+        size_t pos =
+                y * fb_info_[idx].line_stride + x * fb_info_[idx].pixel_stride;
+        TLOGD("pos: %zu, bufferSize: %" PRIu32 "\n", pos, fb_info_[idx].size);
+        if (pos >= fb_info_[idx].size) {
             return teeui::Error::OutOfBoundsDrawing;
         }
         double alfa = (color & 0xff000000) >> 24;
         alfa /= 255.0;
-        auto& pixel = *reinterpret_cast<teeui::Color*>(fb_info_.buffer + pos);
+        auto& pixel =
+                *reinterpret_cast<teeui::Color*>(fb_info_[idx].buffer + pos);
 
         pixel = alfaCombineChannel(0, alfa, color, pixel) |
                 alfaCombineChannel(8, alfa, color, pixel) |
@@ -224,22 +246,23 @@ ResponseCode TrustyConfirmationUI::renderAndSwap() {
     if (inverted_) {
         bgColor = kColorBackgroundInv;
     }
-    uint8_t* line_iter = fb_info_.buffer;
-    for (uint32_t yi = 0; yi < fb_info_.height; ++yi) {
+    uint8_t* line_iter = fb_info_[idx].buffer;
+    for (uint32_t yi = 0; yi < fb_info_[idx].height; ++yi) {
         auto pixel_iter = line_iter;
-        for (uint32_t xi = 0; xi < fb_info_.width; ++xi) {
+        for (uint32_t xi = 0; xi < fb_info_[idx].width; ++xi) {
             *reinterpret_cast<uint32_t*>(pixel_iter) = bgColor;
-            pixel_iter += fb_info_.pixel_stride;
+            pixel_iter += fb_info_[idx].pixel_stride;
         }
-        line_iter += fb_info_.line_stride;
+        line_iter += fb_info_[idx].line_stride;
     }
 
-    if (auto error = drawElements(layout_, drawPixel)) {
+    if (auto error = drawElements(layout_[idx], drawPixel)) {
         TLOGE("Element drawing failed: %u\n", error.code());
         return teeuiError2ResponseCode(error);
     }
 
-    if (auto rc = secure_fb_display_next(secure_fb_handle_, &fb_info_)) {
+    if (auto rc = secure_fb_display_next(secure_fb_handle_[idx],
+                                         &fb_info_[idx])) {
         TLOGE("secure_fb_display_next returned  %d\n", rc);
         return ResponseCode::UIError;
     }
@@ -264,13 +287,16 @@ ResponseCode TrustyConfirmationUI::showInstructions(bool enable) {
         else
             color = kColorDisabled;
     }
-    std::get<LabelOK>(layout_).setTextColor(color);
-    std::get<LabelCancel>(layout_).setTextColor(color);
     ResponseCode rc = ResponseCode::OK;
-    if (enable) {
-        rc = renderAndSwap();
-        if (rc != ResponseCode::OK) {
-            stop();
+    for (auto i = 0; i < (int)layout_.size(); ++i) {
+        std::get<LabelOK>(layout_[i]).setTextColor(color);
+        std::get<LabelCancel>(layout_[i]).setTextColor(color);
+        if (enable) {
+            rc = renderAndSwap(i);
+            if (rc != ResponseCode::OK) {
+                stop();
+                break;
+            }
         }
     }
     return rc;
@@ -278,7 +304,9 @@ ResponseCode TrustyConfirmationUI::showInstructions(bool enable) {
 
 void TrustyConfirmationUI::stop() {
     TLOGI("calling gui stop\n");
-    secure_fb_close(secure_fb_handle_);
-    secure_fb_handle_ = NULL;
+    for (auto& secure_fb_handle: secure_fb_handle_) {
+        secure_fb_close(secure_fb_handle);
+        secure_fb_handle = NULL;
+    }
     TLOGI("calling gui stop - done\n");
 }

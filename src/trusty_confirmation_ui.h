@@ -19,6 +19,8 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include <vector>
+
 #include <layouts/layout.h>
 
 #include <teeui/error.h>
@@ -75,15 +77,15 @@ public:
     }
 
 private:
-    teeui::Error updateTranslations();
-    teeui::ResponseCode renderAndSwap();
+    teeui::Error updateTranslations(uint32_t idx);
+    teeui::ResponseCode renderAndSwap(uint32_t idx);
 
-    secure_fb_info fb_info_;
-    secure_fb_handle_t secure_fb_handle_;
+    std::vector<secure_fb_info> fb_info_;
+    std::vector<secure_fb_handle_t> secure_fb_handle_;
 
     uint32_t rotation_;
     bool inverted_;
     bool enabled_;
 
-    teeui::layout_t<teeui::ConfUILayout> layout_;
+    std::vector<teeui::layout_t<teeui::ConfUILayout>> layout_;
 };
