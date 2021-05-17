@@ -157,7 +157,7 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
                                          bool magnified) {
     enabled_ = true;
     inverted_ = inverted;
-    if (auto rc = secure_fb_open(&secure_fb_handle_, &fb_info_)) {
+    if (auto rc = secure_fb_open(&secure_fb_handle_, &fb_info_, 0)) {
         TLOGE("secure_fb_open returned  %d\n", rc);
         return ResponseCode::UIError;
     }
