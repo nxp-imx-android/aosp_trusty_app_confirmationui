@@ -243,7 +243,8 @@ ResponseCode TrustyConfirmationUI::renderAndSwap(uint32_t idx) {
 
         pixel = alfaCombineChannel(0, alfa, color, pixel) |
                 alfaCombineChannel(8, alfa, color, pixel) |
-                alfaCombineChannel(16, alfa, color, pixel);
+                alfaCombineChannel(16, alfa, color, pixel) |
+                (pixel & 0xff000000);
         return teeui::Error::OK;
     });
 
