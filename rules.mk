@@ -22,6 +22,10 @@ MANIFEST := $(LOCAL_DIR)/manifest.json
 CONFIRMATIONUI_LAYOUTS ?= $(LOCAL_DIR)/examples/layouts
 CONFIRMATIONUI_DEVICE_PARAMS ?= $(LOCAL_DIR)/examples/devices/emulator
 
+MODULE_INCLUDES += \
+	trusty/hardware/nxp/platform/imx/common/include \
+	trusty/hardware/nxp/platform/imx/soc/$(PLATFORM_SOC)/include \
+
 MODULE_SRCS += \
 	$(LOCAL_DIR)/src/main.cpp \
 	$(LOCAL_DIR)/src/secure_input_tracker.cpp \
@@ -30,6 +34,7 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/src/trusty_time_stamper.cpp \
 
 MODULE_LIBRARY_DEPS += \
+        trusty/hardware/nxp/base/lib/hwsecure \
 	trusty/user/base/lib/keymaster \
 	trusty/user/base/lib/libc-trusty \
 	trusty/user/base/lib/libstdc++-trusty \
