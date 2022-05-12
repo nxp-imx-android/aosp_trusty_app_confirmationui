@@ -110,6 +110,10 @@ void TrustyOperation::finalizeHook() {
     gui_.stop();
 }
 
+teeui::MsgVector<uint32_t> TrustyOperation::getSecureUIParams() {
+    return gui_.getSecureUIParams();
+}
+
 ResponseCode TrustyOperation::testCommandHook(TestModeCommands testCmd) {
     switch (testCmd) {
     case TestModeCommands::OK_EVENT:

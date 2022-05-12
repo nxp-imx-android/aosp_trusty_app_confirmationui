@@ -29,6 +29,11 @@
 #include <teeui/localization/ConfirmationUITranslations.h>
 #include <teeui/utils.h>
 #include <trusty_log.h>
+#include <nxp_confirmationui_consts.h>
+#if defined(MACH_IMX8MQ)
+#include <platform/imx_dcss.h>
+extern "C" long _trusty_ioctl(uint32_t fd, uint32_t req, void *buf);
+#endif
 
 using teeui::ResponseCode;
 
@@ -310,4 +315,21 @@ void TrustyConfirmationUI::stop() {
         secure_fb_handle = NULL;
     }
     TLOGI("calling gui stop - done\n");
+}
+
+teeui::MsgVector<uint32_t> TrustyConfirmationUI::getSecureUIParams() {
+#if defined(MACH_IMX8MQ)
+    TLOGI("calling gui getSecureUIParams\n");
+    secure_ui_params[0] = SECUREUI_TOP_X;
+    secure_ui_params[1] = SECUREUI_TOP_Y;
+    secure_ui_params[2] = SECUREUI_WIDTH;
+    secure_ui_params[3] = SECUREUI_HEIGHT;
+    struct secureui_params params = {SECUREUI_TOP_X, SECUREUI_TOP_Y, SECUREUI_WIDTH, SECUREUI_HEIGHT};
+    int ret = _trusty_ioctl(SYSCALL_PLATFORM_FD_DCSS, DCSS_SET_SECUREUI_PARAMS, &params);
+    if (ret != 0) {
+        TLOGE("set secure ui param fail\n");
+    }
+#endif
+    teeui::MsgVector<uint32_t> result(std::begin(secure_ui_params), std::end(secure_ui_params));
+    return result;
 }

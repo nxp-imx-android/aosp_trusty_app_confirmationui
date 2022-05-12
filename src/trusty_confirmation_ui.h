@@ -30,6 +30,8 @@
 
 #include <secure_input/secure_input_proto.h>
 
+#include <imx-regs.h>
+
 class TrustyConfirmationUI {
 public:
     TrustyConfirmationUI() = default;
@@ -67,6 +69,8 @@ public:
      */
     void stop();
 
+    teeui::MsgVector<uint32_t> getSecureUIParams();
+    uint32_t secure_ui_params[4];
     // TrustyConfirmationUI not copyable
     TrustyConfirmationUI& operator=(const TrustyConfirmationUI&) = delete;
 
