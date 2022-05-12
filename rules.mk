@@ -18,6 +18,8 @@ MODULE := $(LOCAL_DIR)
 
 MANIFEST := $(LOCAL_DIR)/manifest.json
 
+CONSTANTS := trusty/hardware/nxp/platform/imx/common/include/platform/nxp_confirmarionui_consts.json
+
 MODULE_INCLUDES += \
 	trusty/hardware/nxp/platform/imx/common/include \
 	trusty/hardware/nxp/platform/imx/soc/$(PLATFORM_SOC)/include \

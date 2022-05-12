@@ -45,6 +45,7 @@ public:
     teeui::ResponseCode initHook();
     void abortHook();
     void finalizeHook();
+    teeui::MsgVector<uint32_t> getSecureUIParams();
     teeui::ResponseCode testCommandHook(teeui::TestModeCommands testCmd);
     teeui::WriteStream extendedProtocolHook(teeui::Protocol proto,
                                             teeui::ReadStream in,
