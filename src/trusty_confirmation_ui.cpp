@@ -207,6 +207,10 @@ ResponseCode TrustyConfirmationUI::renderAndSwap(uint32_t idx) {
                                                     -> teeui::Error {
         uint32_t temp;
 
+#if defined(PLATFORM_USE_BGRA)
+        color = (((color & 0xff0000) >> 16) | (color & 0xff00)
+                 | ((color & 0xff) << 16) | (color & 0xff000000));
+#endif
         TLOGD("px %u %u: %08x", x, y, color);
 
         /* Transform co-ordinates for rotation */
