@@ -18,7 +18,7 @@ MODULE := $(LOCAL_DIR)
 
 MANIFEST := $(LOCAL_DIR)/manifest.json
 
-CONSTANTS := trusty/hardware/nxp/platform/imx/common/include/platform/nxp_confirmarionui_consts.json
+CONSTANTS := trusty/hardware/nxp/platform/imx/soc/$(PLATFORM_SOC)/include/nxp_confirmarionui_consts.json
 
 # Use the default layouts unless we have a vendor specific layout defined.
 CONFIRMATIONUI_LAYOUTS ?= $(LOCAL_DIR)/examples/layouts
