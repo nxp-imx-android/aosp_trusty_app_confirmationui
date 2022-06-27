@@ -21,6 +21,7 @@ LIBTEEUI_ROOT := $(TRUSTY_TOP)/system/teeui/libteeui
 
 MODULE_SRCS += \
 	$(LOCAL_DIR)/fonts.S \
+	$(LOCAL_DIR)/bitmap.S \
 
 MODULE_EXPORT_INCLUDES += $(LOCAL_DIR)/include
 

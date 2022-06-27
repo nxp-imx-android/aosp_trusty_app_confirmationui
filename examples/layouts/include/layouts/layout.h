@@ -23,8 +23,10 @@
 #include <teeui/utils.h>
 #include <memory>
 #include <tuple>
+#include <teeui/bitmap.h>
 
 #include "fonts.h"
+#include "bitmaps.h"
 
 using teeui::localization::TranslationId;
 
@@ -88,6 +90,20 @@ DECLARE_FONT_BUFFER(RobotoRegular, RobotoRegular, RobotoRegular_length);
 DECLARE_FONT_BUFFER(Shield, Shield, Shield_length);
 
 CONSTANT(DefaultFont, FONT(RobotoRegular));
+
+CONSTANT(BitmapPosx, 0_dp);
+CONSTANT(BitmapPosy, 0_dp);
+CONSTANT(BitmapWidth, 240_px);
+CONSTANT(BitmapHeight, 120_px);
+
+DECLARE_BITMAP_BUFFER(Example, Example, Example_length);
+
+BEGIN_ELEMENT(ExampleBitmap, teeui::Bitmap)
+Dimension(BitmapWidth, BitmapHeight);
+Position(BitmapPosx, BitmapPosy);
+Bitmap(BITMAP(Example));
+ScaleParam(2.0);
+END_ELEMENT();
 
 BEGIN_ELEMENT(LabelOK, teeui::Label)
 FontSize(DefaultFontSize());
@@ -191,6 +207,7 @@ Font(FONT(RobotoRegular));
 END_ELEMENT();
 
 NEW_LAYOUT(ConfUILayout,
+           ExampleBitmap,
            LabelOK,
            IconPower,
            LabelCancel,
