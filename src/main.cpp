@@ -311,6 +311,12 @@ int main(void) {
     TLOGD("Initializing ConfirmationUI app\n");
 
 #if defined(MACH_IMX8MQ)
+    rc = set_rdc_mem_region();
+    if (rc < 0) {
+        TLOGE("confirmationUI failed to protect secure memory\n");
+        return rc;
+    }
+
     struct dcss_msg msg;
     msg.enable = 1;
     _trusty_ioctl(SYSCALL_PLATFORM_FD_DCSS, DCSS_ENABLE_SECURE_CTXLD_BUFFER, &msg);
