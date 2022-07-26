@@ -36,20 +36,6 @@ extern "C" long _trusty_ioctl(uint32_t fd, uint32_t req, void *buf);
 #endif
 
 using teeui::ResponseCode;
-#if defined(PLATFORM_USE_BGRA)
-static constexpr const teeui::Color kColorEnabled = 0xff202124;
-static constexpr const teeui::Color kColorDisabled = 0xffbdbdbd;
-static constexpr const teeui::Color kColorEnabledInv = 0xffdede;
-static constexpr const teeui::Color kColorDisabledInv = 0xff424242;
-static constexpr const teeui::Color kColorBackground = 0xffffffff;
-static constexpr const teeui::Color kColorBackgroundInv = 0xff000000;
-static constexpr const teeui::Color kColorShieldInv = 0xfff66d69;
-static constexpr const teeui::Color kColorShield = 0xff1a73e8;
-static constexpr const teeui::Color kColorHintInv = 0xff9aa0a6;
-static constexpr const teeui::Color kColorHint = 0xff5f6368;
-static constexpr const teeui::Color kColorButton = 0xff1a73e8;
-static constexpr const teeui::Color kColorButtonInv = 0xff669df6;
-#else
 static constexpr const teeui::Color kColorEnabled = 0xff242120;
 static constexpr const teeui::Color kColorDisabled = 0xffbdbdbd;
 static constexpr const teeui::Color kColorEnabledInv = 0xffdedede;
@@ -62,7 +48,6 @@ static constexpr const teeui::Color kColorHintInv = 0xffa6a09a;
 static constexpr const teeui::Color kColorHint = 0xff68635f;
 static constexpr const teeui::Color kColorButton = 0xffe8731a;
 static constexpr const teeui::Color kColorButtonInv = 0xfff69d66;
-#endif
 
 template <typename Label, typename Layout>
 static teeui::Error updateString(Layout* layout) {
@@ -241,6 +226,10 @@ ResponseCode TrustyConfirmationUI::renderAndSwap(uint32_t idx) {
     auto drawPixel = teeui::makePixelDrawer([&, this](uint32_t x, uint32_t y,
                                                       teeui::Color color)
                                                     -> teeui::Error {
+#if defined(PLATFORM_USE_BGRA)
+        color = (((color & 0xff0000) >> 16) | (color & 0xff00)
+                 | ((color & 0xff) << 16) | (color & 0xff000000));
+#endif
         TLOGD("px %u %u: %08x", x, y, color);
         size_t pos =
                 y * fb_info_[idx].line_stride + x * fb_info_[idx].pixel_stride;
