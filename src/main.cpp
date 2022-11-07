@@ -33,9 +33,9 @@
 #include "ipc.h"
 #include "trusty_operation.h"
 #include <imx-regs.h>
+#include <lib/hwsecure/hwsecure.h>
 #if defined(MACH_IMX8MQ)
 #include <platform/imx_dcss.h>
-#include <lib/hwsecure/hwsecure.h>
 extern "C" long _trusty_ioctl(uint32_t fd, uint32_t req, void *buf);
 #endif
 
@@ -339,6 +339,8 @@ int main(void) {
     msg.enable = 1;
     _trusty_ioctl(SYSCALL_PLATFORM_FD_DCSS, DCSS_ENABLE_SECURE_CTXLD_BUFFER, &msg);
     set_dcss_secure_access(true);
+#elif defined(MACH_IMX8ULP)
+    set_dcnano_secure_access(true);
 #endif
     hset = tipc_hset_create();
     if (IS_ERR(hset)) {
