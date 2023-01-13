@@ -165,7 +165,7 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
     auto deviceCount = ctx.size();
 
     if (deviceCount < 1) {
-        TLOGE("Invalud deviceCount:  %d\n", (int)deviceCount);
+        TLOGE("Invalid deviceCount:  %d\n", (int)deviceCount);
         return ResponseCode::UIError;
     }
 
@@ -185,12 +185,22 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
             return ResponseCode::UIError;
         }
 
+        /* Check the layout context and framebuffer agree on dimensions,
+         *  ignoring rotation for now.
+         */
         if (*(ctx[i]).getParam<RightEdgeOfScreen>() != pxs(fb_info_[i].width) ||
             *(ctx[i]).getParam<BottomOfScreen>() != pxs(fb_info_[i].height)) {
             TLOGE("Framebuffer dimensions do not match panel configuration\n");
             TLOGE("Check device configuration\n");
             stop();
             return ResponseCode::UIError;
+        }
+
+        /* Swap dimensions if rotating */
+        if (fb_info_[i].rotation == TTUI_DRAW_ROTATION_90 ||
+            fb_info_[i].rotation == TTUI_DRAW_ROTATION_270) {
+            ctx[i].setParam<RightEdgeOfScreen>(pxs(fb_info_[i].height));
+            ctx[i].setParam<BottomOfScreen>(pxs(fb_info_[i].width));
         }
     }
 
@@ -222,7 +232,36 @@ ResponseCode TrustyConfirmationUI::renderAndSwap(uint32_t idx) {
     auto drawPixel = teeui::makePixelDrawer([&, this](uint32_t x, uint32_t y,
                                                       teeui::Color color)
                                                     -> teeui::Error {
+        uint32_t temp;
+
         TLOGD("px %u %u: %08x", x, y, color);
+
+        /* Transform co-ordinates for rotation */
+        switch (fb_info_[idx].rotation) {
+        case TTUI_DRAW_ROTATION_0:
+            break;
+
+        case TTUI_DRAW_ROTATION_90:
+            temp = y;
+            y = x;
+            x = (fb_info_[idx].width - temp) - 1;
+            break;
+
+        case TTUI_DRAW_ROTATION_180:
+            x = (fb_info_[idx].width - x) - 1;
+            y = (fb_info_[idx].height - y) - 1;
+            break;
+
+        case TTUI_DRAW_ROTATION_270:
+            temp = x;
+            x = y;
+            y = (fb_info_[idx].height - temp) - 1;
+            break;
+
+        default:
+            return teeui::Error::UnsupportedPixelFormat;
+        }
+
         size_t pos =
                 y * fb_info_[idx].line_stride + x * fb_info_[idx].pixel_stride;
         TLOGD("pos: %zu, bufferSize: %" PRIu32 "\n", pos, fb_info_[idx].size);

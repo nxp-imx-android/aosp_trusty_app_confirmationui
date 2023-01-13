@@ -72,7 +72,6 @@ public:
 
     TrustyConfirmationUI& operator=(TrustyConfirmationUI&& other) {
         fb_info_ = other.fb_info_;
-        rotation_ = other.rotation_;
         return *this;
     }
 
@@ -83,7 +82,6 @@ private:
     std::vector<secure_fb_info> fb_info_;
     std::vector<secure_fb_handle_t> secure_fb_handle_;
 
-    uint32_t rotation_;
     bool inverted_;
     bool enabled_;
 
