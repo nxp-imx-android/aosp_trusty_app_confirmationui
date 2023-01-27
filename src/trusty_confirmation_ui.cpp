@@ -161,26 +161,34 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
 
     using namespace teeui;
 
-    auto ctx = devices::getDeviceContext(magnified);
-    auto deviceCount = ctx.size();
+    const int displayCount = devices::getDisplayCount();
 
-    if (deviceCount < 1) {
-        TLOGE("Invalid deviceCount:  %d\n", (int)deviceCount);
+    if (displayCount < 1) {
+        TLOGE("Invalid displayCount:  %d\n", displayCount);
         return ResponseCode::UIError;
     }
 
-    fb_info_.resize(deviceCount);
-    secure_fb_handle_.resize(deviceCount);
-    layout_.resize(deviceCount);
+    fb_info_.resize(displayCount);
+    secure_fb_handle_.resize(displayCount);
+    layout_.resize(displayCount);
 
-    for (auto i = 0; i < (int)deviceCount; ++i) {
+    for (int i = 0; i < displayCount; ++i) {
         if (auto rc = secure_fb_open(&secure_fb_handle_[i], &fb_info_[i], i)) {
             TLOGE("secure_fb_open returned  %d\n", rc);
             stop();
             return ResponseCode::UIError;
         }
+
         if (fb_info_[i].pixel_format != TTUI_PF_RGBA8) {
             TLOGE("Unknown pixel format %u\n", fb_info_[i].pixel_format);
+            stop();
+            return ResponseCode::UIError;
+        }
+
+        std::optional<context<ConUIParameters>> ctx =
+                devices::getDisplayContext(fb_info_[i].display_index, magnified);
+        if (!ctx) {
+            TLOGE("Failed to get device context: %d\n", i);
             stop();
             return ResponseCode::UIError;
         }
@@ -188,10 +196,9 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
         /* Check the layout context and framebuffer agree on dimensions,
          *  ignoring rotation for now.
          */
-        if (*(ctx[i]).getParam<RightEdgeOfScreen>() != pxs(fb_info_[i].width) ||
-            *(ctx[i]).getParam<BottomOfScreen>() != pxs(fb_info_[i].height)) {
+        if (*ctx->getParam<RightEdgeOfScreen>() != pxs(fb_info_[i].width) ||
+            *ctx->getParam<BottomOfScreen>() != pxs(fb_info_[i].height)) {
             TLOGE("Framebuffer dimensions do not match panel configuration\n");
-            TLOGE("Check device configuration\n");
             stop();
             return ResponseCode::UIError;
         }
@@ -199,14 +206,12 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
         /* Swap dimensions if rotating */
         if (fb_info_[i].rotation == TTUI_DRAW_ROTATION_90 ||
             fb_info_[i].rotation == TTUI_DRAW_ROTATION_270) {
-            ctx[i].setParam<RightEdgeOfScreen>(pxs(fb_info_[i].height));
-            ctx[i].setParam<BottomOfScreen>(pxs(fb_info_[i].width));
+            ctx->setParam<RightEdgeOfScreen>(pxs(fb_info_[i].height));
+            ctx->setParam<BottomOfScreen>(pxs(fb_info_[i].width));
         }
-    }
 
-    for (auto i = 0; i < (int)deviceCount; ++i) {
-        updateColorScheme(&(ctx[i]), inverted_);
-        layout_[i] = instantiateLayout(ConfUILayout(), ctx[i]);
+        updateColorScheme(&ctx.value(), inverted_);
+        layout_[i] = instantiateLayout(ConfUILayout(), *ctx);
 
         localization::selectLangId(lang_id);
         if (auto error = updateTranslations(i)) {

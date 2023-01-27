@@ -18,11 +18,14 @@
 
 #include <layouts/layout.h>
 #include <stdint.h>
-#include <vector>
+#include <optional>
 
 namespace devices {
 
-std::vector<teeui::context<teeui::ConUIParameters>> getDeviceContext(
+int getDisplayCount();
+
+std::optional<teeui::context<teeui::ConUIParameters>> getDisplayContext(
+        int display_index,
         bool magnified);
 
 }  // namespace devices
