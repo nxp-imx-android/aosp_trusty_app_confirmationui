@@ -16,10 +16,13 @@
 
 #pragma once
 
+#include <device_layout.h>
 #include <teeui/button.h>
 #include <teeui/label.h>
 #include <teeui/localization/ConfirmationUITranslations.h>
 #include <teeui/utils.h>
+#include <memory>
+#include <tuple>
 
 #include "fonts.h"
 
@@ -57,6 +60,8 @@ NEW_PARAMETER_SET(ConUIParameters,
                   ColorTextHint,
                   ColorButton,
                   ColorButtonBG);
+
+namespace layouts {
 
 CONSTANT(BorderWidth, 24_dp);
 CONSTANT(PowerButtonCenter, (PowerButtonTop() + PowerButtonBottom()) / 2_px);
@@ -195,4 +200,63 @@ NEW_LAYOUT(ConfUILayout,
            LabelHint,
            LabelBody);
 
+class DisplayLayout : public ILayout {
+public:
+    layout_t<ConfUILayout> layoutInstance_ = {};
+
+    DisplayLayout(bool inverted, const context<ConUIParameters>& ctx)
+            : ILayout(inverted) {
+        layoutInstance_ = instantiateLayout(ConfUILayout(), ctx);
+    };
+
+    void setLanguage(const char* language_id) override {
+        teeui::localization::selectLangId(language_id);
+        translate(&std::get<LabelOK>(layoutInstance_));
+        translate(&std::get<LabelCancel>(layoutInstance_));
+        translate(&std::get<LabelTitle>(layoutInstance_));
+        translate(&std::get<LabelHint>(layoutInstance_));
+    }
+
+    void setConfirmationMessage(const char* prompt) override {
+        std::get<LabelBody>(layoutInstance_)
+                .setText({prompt, prompt + strlen(prompt)});
+    }
+
+    void showInstructions(bool enable) override {
+        Color color;
+
+        if (enable) {
+            color = inverted_ ? kColorEnabledInv : kColorEnabled;
+        } else {
+            color = inverted_ ? kColorDisabledInv : kColorDisabled;
+        }
+
+        std::get<LabelOK>(layoutInstance_).setTextColor(color);
+        std::get<LabelCancel>(layoutInstance_).setTextColor(color);
+    }
+
+    teeui::Error drawElements(const teeui::PixelDrawer& drawPixel) override {
+        return drawElements(layoutInstance_, drawPixel);
+    }
+
+private:
+    void translate(LabelImpl* label) {
+        uint64_t textId = label->textId();
+        const char* translation = localization::lookup(
+                static_cast<localization::TranslationId>(textId));
+        label->setText({&translation[0], &translation[strlen(translation)]});
+    }
+
+    template <typename... Elements>
+    teeui::Error drawElements(std::tuple<Elements...>& layout,
+                              const teeui::PixelDrawer& drawPixel) {
+        // Error::operator|| is overloaded, so we don't get short circuit
+        // evaluation. But we get the first error that occurs. We will still try
+        // and draw the remaining elements in the order they appear in the
+        // layout tuple.
+        return (std::get<Elements>(layout).draw(drawPixel) || ...);
+    }
+};
+
+}  // namespace layouts
 }  // namespace teeui

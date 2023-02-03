@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <vector>
 
 #include <layouts/layout.h>
@@ -29,6 +30,8 @@
 #include <lib/secure_fb/secure_fb.h>
 
 #include <secure_input/secure_input_proto.h>
+
+#include <device_layout.h>
 
 class TrustyConfirmationUI {
 public:
@@ -85,5 +88,5 @@ private:
     bool inverted_;
     bool enabled_;
 
-    std::vector<teeui::layout_t<teeui::ConfUILayout>> layout_;
+    std::vector<std::unique_ptr<teeui::layouts::ILayout>> layout_;
 };

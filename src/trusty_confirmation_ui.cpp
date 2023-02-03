@@ -32,37 +32,11 @@
 
 using teeui::ResponseCode;
 
-static constexpr const teeui::Color kColorEnabled = 0xff242120;
-static constexpr const teeui::Color kColorDisabled = 0xffbdbdbd;
-static constexpr const teeui::Color kColorEnabledInv = 0xffdedede;
-static constexpr const teeui::Color kColorDisabledInv = 0xff424242;
-static constexpr const teeui::Color kColorBackground = 0xffffffff;
-static constexpr const teeui::Color kColorBackgroundInv = 0xff000000;
-static constexpr const teeui::Color kColorShieldInv = 0xfff69d66;
-static constexpr const teeui::Color kColorShield = 0xffe8731a;
-static constexpr const teeui::Color kColorHintInv = 0xffa6a09a;
-static constexpr const teeui::Color kColorHint = 0xff68635f;
-static constexpr const teeui::Color kColorButton = 0xffe8731a;
-static constexpr const teeui::Color kColorButtonInv = 0xfff69d66;
-
-template <typename Label, typename Layout>
-static teeui::Error updateString(Layout* layout) {
-    using namespace teeui;
-    const char* str;
-    auto& label = std::get<Label>(*layout);
-
-    str = localization::lookup(TranslationId(label.textId()));
-    if (str == nullptr) {
-        TLOGW("Given translation_id %" PRIu64 " not found", label.textId());
-        return Error::Localization;
-    }
-    label.setText({str, str + strlen(str)});
-    return Error::OK;
-}
-
 template <typename Context>
 static void updateColorScheme(Context* ctx, bool inverted) {
+    using namespace teeui::layouts;
     using namespace teeui;
+
     if (inverted) {
         ctx->template setParam<ShieldColor>(kColorShieldInv);
         ctx->template setParam<ColorText>(kColorBackground);
@@ -98,15 +72,6 @@ static teeui::Color alfaCombineChannel(uint32_t shift,
     return result << shift;
 }
 
-template <typename... Elements>
-static teeui::Error drawElements(std::tuple<Elements...>& layout,
-                                 const teeui::PixelDrawer& drawPixel) {
-    // Error::operator|| is overloaded, so we don't get short circuit
-    // evaluation. But we get the first error that occurs. We will still try and
-    // draw the remaining elements in the order they appear in the layout tuple.
-    return (std::get<Elements>(layout).draw(drawPixel) || ...);
-}
-
 static ResponseCode teeuiError2ResponseCode(const teeui::Error& e) {
     switch (e.code()) {
     case teeui::Error::OK:
@@ -138,24 +103,12 @@ static ResponseCode teeuiError2ResponseCode(const teeui::Error& e) {
     }
 }
 
-teeui::Error TrustyConfirmationUI::updateTranslations(uint32_t idx) {
-    using namespace teeui;
-    if (auto error = updateString<LabelOK>(&layout_[idx]))
-        return error;
-    if (auto error = updateString<LabelCancel>(&layout_[idx]))
-        return error;
-    if (auto error = updateString<LabelTitle>(&layout_[idx]))
-        return error;
-    if (auto error = updateString<LabelHint>(&layout_[idx]))
-        return error;
-    return Error::OK;
-}
-
 ResponseCode TrustyConfirmationUI::start(const char* prompt,
                                          const char* lang_id,
                                          bool inverted,
                                          bool magnified) {
     ResponseCode render_error = ResponseCode::OK;
+
     enabled_ = true;
     inverted_ = inverted;
 
@@ -210,19 +163,26 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
             ctx->setParam<BottomOfScreen>(pxs(fb_info_[i].width));
         }
 
+        /* Set the colours */
         updateColorScheme(&ctx.value(), inverted_);
-        layout_[i] = instantiateLayout(ConfUILayout(), *ctx);
 
-        localization::selectLangId(lang_id);
-        if (auto error = updateTranslations(i)) {
+        /* Get the layout for the display */
+        std::optional<std::unique_ptr<teeui::layouts::ILayout>> layout =
+                devices::getDisplayLayout(fb_info_[i].display_index, inverted,
+                                          *ctx);
+        if (!layout) {
+            TLOGE("Failed to get device layout: %d\n", i);
             stop();
-            return teeuiError2ResponseCode(error);
+            return ResponseCode::UIError;
         }
 
-        std::get<LabelBody>(layout_[i])
-                .setText({prompt, prompt + strlen(prompt)});
+        layout_[i] = std::move(*layout);
 
-        showInstructions(false /* enable */);
+        /* Configure the layout */
+        layout_[i]->setLanguage(lang_id);
+        layout_[i]->setConfirmationMessage(prompt);
+        layout_[i]->showInstructions(true /* enable */);
+
         render_error = renderAndSwap(i);
         if (render_error != ResponseCode::OK) {
             stop();
@@ -286,10 +246,9 @@ ResponseCode TrustyConfirmationUI::renderAndSwap(uint32_t idx) {
 
     TLOGI("begin rendering\n");
 
-    teeui::Color bgColor = kColorBackground;
-    if (inverted_) {
-        bgColor = kColorBackgroundInv;
-    }
+    teeui::Color bgColor = inverted_ ? teeui::layouts::kColorBackgroundInv
+                                     : teeui::layouts::kColorBackground;
+
     uint8_t* line_iter = fb_info_[idx].buffer;
     for (uint32_t yi = 0; yi < fb_info_[idx].height; ++yi) {
         auto pixel_iter = line_iter;
@@ -300,7 +259,7 @@ ResponseCode TrustyConfirmationUI::renderAndSwap(uint32_t idx) {
         line_iter += fb_info_[idx].line_stride;
     }
 
-    if (auto error = drawElements(layout_[idx], drawPixel)) {
+    if (auto error = layout_[idx]->drawElements(drawPixel)) {
         TLOGE("Element drawing failed: %u\n", error.code());
         return teeuiError2ResponseCode(error);
     }
@@ -316,25 +275,16 @@ ResponseCode TrustyConfirmationUI::renderAndSwap(uint32_t idx) {
 
 ResponseCode TrustyConfirmationUI::showInstructions(bool enable) {
     using namespace teeui;
+
     if (enabled_ == enable)
         return ResponseCode::OK;
     enabled_ = enable;
-    Color color;
-    if (enable) {
-        if (inverted_)
-            color = kColorEnabledInv;
-        else
-            color = kColorEnabled;
-    } else {
-        if (inverted_)
-            color = kColorDisabledInv;
-        else
-            color = kColorDisabled;
-    }
+
     ResponseCode rc = ResponseCode::OK;
+
     for (auto i = 0; i < (int)layout_.size(); ++i) {
-        std::get<LabelOK>(layout_[i]).setTextColor(color);
-        std::get<LabelCancel>(layout_[i]).setTextColor(color);
+        layout_[i]->showInstructions(enable);
+
         if (enable) {
             rc = renderAndSwap(i);
             if (rc != ResponseCode::OK) {
@@ -343,6 +293,7 @@ ResponseCode TrustyConfirmationUI::showInstructions(bool enable) {
             }
         }
     }
+
     return rc;
 }
 

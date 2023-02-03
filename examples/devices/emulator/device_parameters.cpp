@@ -51,4 +51,15 @@ std::optional<context<ConUIParameters>> getDisplayContext(int display_index,
     return ctx;
 }
 
+std::optional<std::unique_ptr<layouts::ILayout>> getDisplayLayout(
+        int display_index,
+        bool inverted,
+        const context<ConUIParameters>& ctx) {
+    if (display_index != 0) {
+        return std::nullopt;
+    }
+
+    return std::make_unique<teeui::layouts::DisplayLayout>(inverted, ctx);
+}
+
 }  // namespace devices
