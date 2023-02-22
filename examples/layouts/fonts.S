@@ -14,8 +14,13 @@
  * limitations under the License.
  */
 
+#include <lk/asm.h>
 #include <teeui/incfont.h>
 
 TEEUI_INCFONT(RobotoMedium, "Roboto-Medium.ttf");
 TEEUI_INCFONT(RobotoRegular, "Roboto-Regular.ttf");
 TEEUI_INCFONT(Shield, "Shield.ttf");
+
+#ifdef ARCH_ARM64
+SECTION_GNU_NOTE_PROPERTY_AARCH64_FEATURES(GNU_NOTE_FEATURE_AARCH64_BTI)
+#endif
