@@ -28,7 +28,7 @@ MODULE_INCLUDES += \
 	$(LIBTEEUI_ROOT)/include \
 	$(LOCAL_DIR)/include \
 	$(LOCAL_DIR)/../../layouts/include \
-	$(LOCAL_DIR)/../../../include \
+	$(LOCAL_DIR)/../../../../include \
 
 MODULE_LIBRARY_DEPS += \
 	trusty/user/base/lib/teeui-stub \
