@@ -32,13 +32,13 @@ MODULE_LIBRARY_DEPS += \
 
 # Use the example layouts unless we have a vendor specific layout defined.
 ifeq ($(CONFIRMATIONUI_LAYOUTS),)
-MODULE_LIBRARY_DEPS += $(LOCAL_DIR)/examples/layouts
+MODULE_LIBRARY_DEPS += $(LOCAL_DIR)/../examples/layouts
 else
 MODULE_LIBRARY_DEPS += $(CONFIRMATIONUI_LAYOUTS)
 endif
 
 ifeq ($(CONFIRMATIONUI_DEVICE_PARAMS),)
-MODULE_LIBRARY_DEPS += $(LOCAL_DIR)/examples/devices/emulator
+MODULE_LIBRARY_DEPS += $(LOCAL_DIR)/../examples/devices/emulator
 else
 MODULE_LIBRARY_DEPS += $(CONFIRMATIONUI_DEVICE_PARAMS)
 endif
