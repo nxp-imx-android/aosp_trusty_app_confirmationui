@@ -27,6 +27,17 @@
 
 static const char* language_ids[] = {"en"};
 
+static const char* messages[] = {
+        /* Simple message */
+        "Android Test Message",
+        /* Two line message */
+        "Line 1\nLine 2",
+        /* 100 'W' characters as required by Android design guidelines */
+        "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+        /* 8 groups of 12 'W' characters as required by Android design
+           guidelines */
+        "WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW"};
+
 TEST(confui, display_count) {
     int display_count = devices::getDisplayCount();
 
@@ -39,6 +50,7 @@ typedef struct {
 
 typedef struct {
     const char* lang_id;
+    const char* message;
     bool magnified;
     bool inverse;
 } confuip_t;
@@ -48,10 +60,12 @@ TEST_F_SETUP(confuip) {
     const bool* magnified = (const bool*)param_arr[0];
     const bool* inverse = (const bool*)param_arr[1];
     const char** lang_id = (const char**)param_arr[2];
+    const char** message = (const char**)param_arr[3];
 
     _state->magnified = *magnified;
     _state->inverse = *inverse;
     _state->lang_id = *lang_id;
+    _state->message = *message;
 }
 
 TEST_F_TEARDOWN(confuip) {}
@@ -83,7 +97,7 @@ TEST_P(confuip, display_params) {
 
                 /* Configure the layout */
                 layout->setLanguage(_state->lang_id);
-                layout->setConfirmationMessage("Android Test Message");
+                layout->setConfirmationMessage(_state->message);
                 layout->showInstructions(true /* enable */);
 
                 auto drawPixel = teeui::makePixelDrawer(
@@ -135,16 +149,19 @@ void confuip_to_string(const void* param, char* buf, size_t buf_size) {
     const bool* magnified = (const bool*)param_arr[0];
     const bool* inverse = (const bool*)param_arr[1];
     const char** lang_id = (const char**)param_arr[2];
+    const char** message = (const char**)param_arr[3];
+    uint8_t msg_index = message - messages;
 
-    snprintf(buf, buf_size, "%s%s%s", *lang_id, *magnified ? "/mag" : "",
-             *inverse ? "/inv" : "");
+    snprintf(buf, buf_size, "%s/msg%" PRIu8 "%s%s", *lang_id, msg_index,
+             *magnified ? "/mag" : "", *inverse ? "/inv" : "");
 }
 
 INSTANTIATE_TEST_SUITE_P(confui,
                          confuip,
                          testing_Combine(testing_Bool(), /* magnified */
                                          testing_Bool(), /* inverse */
-                                         testing_ValuesIn(language_ids)),
+                                         testing_ValuesIn(language_ids),
+                                         testing_ValuesIn(messages)),
                          confuip_to_string);
 
 PORT_TEST(confui, "com.android.trusty.confirmationui.test");
