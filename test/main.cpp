@@ -30,8 +30,8 @@ static const char* language_ids[] = {"en"};
 static const char* messages[] = {
         /* Simple message */
         "Android Test Message",
-        /* Two line message */
-        "Line 1\nLine 2",
+        /* Two line message as required by Android design guidelines */
+        "WM Line 1\nWM Line 2",
         /* 100 'W' characters as required by Android design guidelines */
         "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
         /* 8 groups of 12 'W' characters as required by Android design
