@@ -42,6 +42,7 @@ static inline bool is_inited(struct chan_ctx* ctx) {
 
 static bool get_auth_token_key(teeui::AuthTokenKey& authKey) {
     long rc = keymaster_open();
+    bool result = false;
 
     if (rc < 0) {
         return false;
@@ -52,17 +53,18 @@ static bool get_auth_token_key(teeui::AuthTokenKey& authKey) {
     uint32_t local_length = 0;
     rc = keymaster_get_auth_token_key(session, &key, &local_length);
     keymaster_close(session);
-    TLOGD("%s, key length = %u\n", __func__, local_length);
-    if (local_length != teeui::kAuthTokenKeySize) {
-        return false;
-    }
+
     if (rc == NO_ERROR) {
-        memcpy(authKey.data(), key, teeui::kAuthTokenKeySize);
-    } else {
-        return false;
+        if (local_length == teeui::kAuthTokenKeySize) {
+            /* Success  - store the key */
+            memcpy(authKey.data(), key, teeui::kAuthTokenKeySize);
+            result = true;
+        }
+
+        free(key);
     }
 
-    return true;
+    return result;
 }
 
 struct __attribute__((__packed__)) confirmationui_req {
