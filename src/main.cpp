@@ -224,6 +224,7 @@ static int on_connect(const struct tipc_port* port,
         TLOGE("%s, get auth token key failed\n", __func__);
         /* Abort operation and free all resources. */
         op->abort();
+        free(ctx);
         return ERR_GENERIC;
     }
     op->setHmacKey(authKey);
