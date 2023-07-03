@@ -146,21 +146,24 @@ ResponseCode TrustyConfirmationUI::start(const char* prompt,
             return ResponseCode::UIError;
         }
 
-        /* Check the layout context and framebuffer agree on dimensions,
-         *  ignoring rotation for now.
-         */
-        if (*ctx->getParam<RightEdgeOfScreen>() != pxs(fb_info_[i].width) ||
-            *ctx->getParam<BottomOfScreen>() != pxs(fb_info_[i].height)) {
+        /* Get rotated frame buffer dimensions */
+        uint32_t rwidth, rheight;
+
+        if (fb_info_[i].rotation == TTUI_DRAW_ROTATION_90 ||
+            fb_info_[i].rotation == TTUI_DRAW_ROTATION_270) {
+            rwidth = fb_info_[i].height;
+            rheight = fb_info_[i].width;
+        } else {
+            rwidth = fb_info_[i].width;
+            rheight = fb_info_[i].height;
+        }
+
+        /* Check the layout context and framebuffer agree on dimensions */
+        if (*ctx->getParam<RightEdgeOfScreen>() != pxs(rwidth) ||
+            *ctx->getParam<BottomOfScreen>() != pxs(rheight)) {
             TLOGE("Framebuffer dimensions do not match panel configuration\n");
             stop();
             return ResponseCode::UIError;
-        }
-
-        /* Swap dimensions if rotating */
-        if (fb_info_[i].rotation == TTUI_DRAW_ROTATION_90 ||
-            fb_info_[i].rotation == TTUI_DRAW_ROTATION_270) {
-            ctx->setParam<RightEdgeOfScreen>(pxs(fb_info_[i].height));
-            ctx->setParam<BottomOfScreen>(pxs(fb_info_[i].width));
         }
 
         /* Set the colours */

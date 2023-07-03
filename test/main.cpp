@@ -133,7 +133,7 @@ TEST_P(confuip, display_params) {
                           "pixel coverage %" PRIu32 ".%" PRIu32 "%%",
                           coverage / 10, coverage % 10);
 
-                trusty_unittest_printf("[   DATA   ] %" PRIu32 "x%" PRIu32
+                trusty_unittest_printf("[   DATA   ] %" PRIu32 " x %" PRIu32
                                        ", %" PRIu32
                                        " plot calls = approx %" PRIu32
                                        ".%" PRIu32 "%% coverage\n",
