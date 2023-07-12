@@ -16,6 +16,9 @@
 
 #define TLOG_TAG "confirmationui"
 
+#ifdef WITH_HANDLE_PROT
+#include <lib/handle_prot/handle_prot.h>
+#endif
 #include <lib/keymaster/keymaster.h>
 #include <lib/tipc/tipc.h>
 #include <lib/tipc/tipc_srv.h>
@@ -133,7 +136,19 @@ static int handle_init(handle_t chan,
         TLOGE("Shared memory too long\n");
         return ERR_BAD_LEN;
     }
+#ifdef WITH_HANDLE_PROT
+    rc = handle_prot_secure(shm_handle, false);
+    if (rc < 0) {
+        TLOGE("Shared memory should be non-secure, rc=%d\n", rc);
+        return rc;
+    }
 
+    rc = handle_prot_prot_id(shm_handle, 0);
+    if (rc < 0) {
+        TLOGE("Shared memory prot Id invalid, rc=%d.\n", rc);
+        return rc;
+    }
+#endif
     void* shm_base = mmap(0, shm_len, PROT_READ | PROT_WRITE, 0, shm_handle, 0);
     if (shm_base == MAP_FAILED) {
         TLOGE("Failed to mmap() handle\n");

@@ -35,6 +35,13 @@ MODULE_LIBRARY_DEPS += \
 	trusty/user/base/lib/tipc \
 	external/boringssl \
 
+# Enable handle prot if required
+ifeq (true,$(call TOBOOL,$(CONFIRMATIONUI_HANDLE_PROT)))
+MODULE_DEFINES += WITH_HANDLE_PROT
+MODULE_LIBRARY_DEPS += \
+	trusty/user/whitechapel/tz/base/lib/handle_prot
+endif
+
 # Use the example layouts unless we have a vendor specific layout defined.
 ifeq ($(CONFIRMATIONUI_LAYOUTS),)
 MODULE_LIBRARY_DEPS += $(LOCAL_DIR)/examples/layouts
