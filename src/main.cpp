@@ -339,8 +339,6 @@ int main(void) {
     msg.enable = 1;
     _trusty_ioctl(SYSCALL_PLATFORM_FD_DCSS, DCSS_ENABLE_SECURE_CTXLD_BUFFER, &msg);
     set_dcss_secure_access(true);
-#elif defined(MACH_IMX8ULP)
-    set_dcnano_secure_access(true);
 #endif
     hset = tipc_hset_create();
     if (IS_ERR(hset)) {
